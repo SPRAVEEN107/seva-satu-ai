@@ -24,7 +24,7 @@ export default function AdminGrievancePage() {
     const [loading, setLoading] = useState(true);
     const [selectedGrievance, setSelectedGrievance] = useState<any>(null);
     const [filterDept, setFilterDept] = useState("all");
-    
+
     const panelRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -79,7 +79,7 @@ export default function AdminGrievancePage() {
                             <p className="text-muted mt-1">Manage and categorize citizen grievances across departments.</p>
                         </div>
                         <div className="flex gap-3">
-                            <select 
+                            <select
                                 className="input-dark rounded-lg px-4 py-2 text-sm"
                                 value={filterDept}
                                 onChange={(e) => setFilterDept(e.target.value)}
@@ -102,7 +102,7 @@ export default function AdminGrievancePage() {
                                 </div>
                             ) : (
                                 filtered.map((g) => (
-                                    <div 
+                                    <div
                                         key={g.tracking_id}
                                         onClick={() => setSelectedGrievance(g)}
                                         className="glass-card rounded-2xl p-5 border border-card-border hover:border-saffron/40 transition-all cursor-pointer group"
@@ -117,7 +117,7 @@ export default function AdminGrievancePage() {
                                                         {g.status.replace("_", " ")}
                                                     </span>
                                                     <span className="text-xs text-muted flex items-center gap-1">
-                                                       👤 {g.citizen_name || "Anonymous"}
+                                                        👤 {g.citizen_name || "Anonymous"}
                                                     </span>
                                                 </div>
                                                 <h3 className="text-lg font-semibold text-text-primary group-hover:text-saffron transition-colors">
@@ -147,11 +147,11 @@ export default function AdminGrievancePage() {
                 {selectedGrievance && (
                     <div className="fixed inset-0 z-50 flex justify-end">
                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedGrievance(null)} />
-                        <div 
+                        <div
                             ref={panelRef}
                             className="relative w-full max-w-md bg-[#0D0D15] border-l border-card-border h-full p-8 shadow-2xl overflow-y-auto"
                         >
-                            <button 
+                            <button
                                 onClick={() => setSelectedGrievance(null)}
                                 className="absolute top-6 right-6 text-muted hover:text-text-primary transition-colors"
                             >
@@ -172,7 +172,7 @@ export default function AdminGrievancePage() {
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Description</label>
                                     <div className="glass-card rounded-xl p-4 text-sm text-muted leading-relaxed italic border-l-2 border-saffron/30">
-                                        "{selectedGrievance.description}"
+                                        &quot;{selectedGrievance.description}&quot;
                                     </div>
                                 </div>
 
@@ -180,7 +180,7 @@ export default function AdminGrievancePage() {
 
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Assign Department</label>
-                                    <select 
+                                    <select
                                         className="w-full input-dark rounded-xl p-3 text-sm focus:ring-1 focus:ring-saffron"
                                         defaultValue={selectedGrievance.department}
                                         onChange={(e) => handleUpdate(selectedGrievance.tracking_id, { department: e.target.value })}
@@ -206,7 +206,7 @@ export default function AdminGrievancePage() {
 
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Internal Note / Response</label>
-                                    <textarea 
+                                    <textarea
                                         placeholder="Enter details for the citizen..."
                                         className="w-full input-dark rounded-xl p-3 text-sm min-h-[100px] focus:ring-1 focus:ring-saffron"
                                         onKeyDown={(e) => {
