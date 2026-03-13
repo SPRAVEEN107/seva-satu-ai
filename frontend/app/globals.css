@@ -163,6 +163,16 @@ body {
   color: #8888aa;
 }
 
+/* ─── Select Dropdown Fix ───────────────────────────────────────────────────── */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: var(--card-bg);
+  color: var(--text);
+}
+
 /* ─── Score bar ─────────────────────────────────────────────────────────────── */
 .score-bar-track {
   background: rgba(255, 255, 255, 0.06);

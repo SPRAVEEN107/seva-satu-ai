@@ -31,10 +31,10 @@ export default function LanguageSelectionPage() {
                 gsap.from(gridRef.current.children, {
                     y: 10,
                     opacity: 0,
-                    duration: 0.5,
-                    stagger: 0.05,
+                    duration: 0.3,
+                    stagger: 0.03,
                     ease: "power1.out",
-                    delay: 0.3
+                    delay: 0.2
                 });
             }
         }, containerRef);
@@ -59,7 +59,7 @@ export default function LanguageSelectionPage() {
     };
 
     return (
-        <div ref={containerRef} className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 lg:p-12 overflow-y-auto relative py-12">
+        <div ref={containerRef} className="min-h-screen bg-[#050505] flex flex-col items-center justify-start p-6 lg:p-12 overflow-y-auto relative pt-20 pb-12">
             
             {/* Background elements - very subtle */}
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#ff6b00] via-white to-[#138808] opacity-50" />
