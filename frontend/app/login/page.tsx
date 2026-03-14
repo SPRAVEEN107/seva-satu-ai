@@ -28,8 +28,9 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    const baseURL = (process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com").replace(/\/$/, "");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com"}/auth/generate-otp`, {
+      const res = await fetch(`${baseURL}/auth/generate-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phone }),
@@ -67,8 +68,9 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    const baseURL = (process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com").replace(/\/$/, "");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com"}/auth/verify-otp`, {
+      const res = await fetch(`${baseURL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: phone, otp }),
