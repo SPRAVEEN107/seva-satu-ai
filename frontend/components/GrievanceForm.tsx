@@ -114,6 +114,10 @@ export default function GrievanceForm() {
                 state,
             });
             setResult(res.data);
+            // SYNC FOR PRESENTATION
+            const localGrievances = JSON.parse(localStorage.getItem("demo_grievances") || "[]");
+            localStorage.setItem("demo_grievances", JSON.stringify([res.data, ...localGrievances]));
+            
             setStep(2);
             animateStepper(2);
 
@@ -146,7 +150,11 @@ export default function GrievanceForm() {
         setTrackLoading(true);
         try {
             const res = await grievanceAPI.track(trackId.trim());
-            setTrackResult(res.data);
+            if (res.data && !res.data.error) {
+                setTrackResult(res.data);
+            } else {
+                throw new Error("Empty result");
+            }
         } catch {
             // EMERGENCY FALLBACK for presentation
             if (trackId.trim().length > 4) {
@@ -238,23 +246,23 @@ export default function GrievanceForm() {
                         <p className="text-muted text-sm mb-6">{translate("Category:")} <span className="text-saffron">{translate(category)}</span></p>
 
                         <div>
-                            <label className="block text-sm text-muted mb-1.5">State</label>
+                            <label className="block text-sm text-muted mb-1.5">{translate("State")}</label>
                             <input
                                 type="text"
                                 value={state}
                                 onChange={(e) => setState(e.target.value)}
-                                placeholder="e.g., Uttar Pradesh"
+                                placeholder={translate("e.g., Uttar Pradesh")}
                                 className="input-dark w-full px-4 py-2.5 rounded-xl border border-card-border text-sm"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-muted mb-1.5">District</label>
+                            <label className="block text-sm text-muted mb-1.5">{translate("District")}</label>
                             <input
                                 type="text"
                                 value={district}
                                 onChange={(e) => setDistrict(e.target.value)}
-                                placeholder="Your district"
+                                placeholder={translate("Your district")}
                                 className="input-dark w-full px-4 py-2.5 rounded-xl border border-card-border text-sm"
                             />
                         </div>
@@ -365,13 +373,13 @@ export default function GrievanceForm() {
 
             {/* ─── Track Existing ─────────────────────────────── */}
             <div className="mt-12 pt-8 border-t border-card-border">
-                <h3 className="font-display text-lg text-text-primary mb-4">Track Existing Complaint</h3>
+                <h3 className="font-display text-lg text-text-primary mb-4">{translate("Track Existing Complaint")}</h3>
                 <div className="flex gap-2">
                     <input
                         type="text"
                         value={trackId}
                         onChange={(e) => setTrackId(e.target.value)}
-                        placeholder="Enter tracking ID (e.g., GRV-20250310-ABCD)"
+                        placeholder={translate("Enter tracking ID (e.g., GRV-20250310-ABCD)")}
                         className="input-dark flex-1 px-4 py-2.5 rounded-xl border border-card-border text-sm"
                         onKeyDown={(e) => e.key === "Enter" && handleTrack()}
                     />
@@ -380,25 +388,25 @@ export default function GrievanceForm() {
                         disabled={trackLoading}
                         className="btn-cobalt px-5 py-2.5 rounded-xl text-sm font-medium"
                     >
-                        {trackLoading ? "..." : "Track →"}
+                        {trackLoading ? "..." : translate("Track →")}
                     </button>
                 </div>
 
                 {trackResult && (
                     <div className="mt-4 glass-card rounded-xl p-4 text-sm">
                         {(trackResult as { error?: string }).error ? (
-                            <p className="text-red-400">{(trackResult as { error: string }).error}</p>
+                            <p className="text-red-400">{translate((trackResult as { error: string }).error)}</p>
                         ) : (
                             <div className="space-y-2">
                                 <div className="flex justify-between">
-                                    <span className="text-muted">Status</span>
+                                    <div className="text-xs text-muted mt-1">{translate("Status")}</div>
                                     <span className={`status-${(trackResult as { status: string }).status} badge`}>
-                                        {(trackResult as { status: string }).status}
+                                        {translate((trackResult as { status: string }).status)}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-muted">Department</span>
-                                    <span className="text-text-primary">{(trackResult as { department: string }).department}</span>
+                                    <span className="text-muted">{translate("Department")}</span>
+                                    <span className="text-text-primary">{translate((trackResult as { department: string }).department)}</span>
                                 </div>
                             </div>
                         )}

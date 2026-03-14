@@ -93,9 +93,87 @@ export default function LoginPage() {
     }
   };
 
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+
+  const toggleVoiceAssistant = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert("Speech recognition not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      let currentResult = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        currentResult += event.results[i][0].transcript;
+      }
+      setTranscript(currentResult);
+      
+      // Smart Intent: If user says "login" or "authorize", trigger the form
+      if (currentResult.toLowerCase().includes("login") || currentResult.toLowerCase().includes("authorize")) {
+        if (step === 1 && phone.length === 10) {
+            handleGenerateOTP({ preventDefault: () => {} } as any);
+        } else if (step === 2 && otp.length === 6) {
+            handleVerifyOTP({ preventDefault: () => {} } as any);
+        }
+      }
+    };
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] px-4 relative overflow-hidden">
       
+      {/* Voice Assistant Overlay */}
+      {isListening && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl transition-all animate-in fade-in">
+          <div className="w-24 h-24 rounded-full bg-saffron/20 flex items-center justify-center mb-8 relative">
+            <div className="absolute inset-0 rounded-full bg-saffron/40 animate-ping" />
+            <div className="text-4xl">🎙️</div>
+          </div>
+          <p className="text-saffron font-display text-xl mb-4 animate-pulse">{translate("Listening...")}</p>
+          <div className="max-w-2xl text-center px-8">
+            <p className="text-white text-3xl font-medium leading-tight">
+              {transcript || "..."}
+            </p>
+          </div>
+          <button 
+            onClick={() => setIsListening(false)}
+            className="mt-12 px-6 py-2 rounded-full border border-white/20 text-white/60 hover:text-white transition-colors"
+          >
+            {translate("Close")}
+          </button>
+        </div>
+      )}
+
+      {/* Floating Voice Button */}
+      <button
+        onClick={toggleVoiceAssistant}
+        className={`fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95 ${isListening ? 'bg-red-500' : 'bg-saffron'}`}
+      >
+        <span className="text-2xl">{isListening ? "🛑" : "🎙️"}</span>
+        {!isListening && (
+          <span className="absolute -top-12 right-0 bg-white text-black text-[10px] px-2 py-1 rounded-lg font-bold uppercase whitespace-nowrap animate-bounce shadow-xl">
+            {translate("Try Voice AI")}
+          </span>
+        )}
+      </button>
+
       {/* Background Decor - Extremely subtle */}
       <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-saffron via-white to-green opacity-30" />
 

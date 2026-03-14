@@ -133,7 +133,7 @@ export default function Navbar() {
                             className="btn-saffron w-full block text-center px-4 py-2.5 rounded-lg text-sm font-medium"
                             onClick={() => setMenuOpen(false)}
                         >
-                            My Account
+                            {translate("My Account")}
                         </Link>
                     </div>
                 </div>

@@ -31,7 +31,7 @@ const QUICK_ACTIONS = [
     { label: "+ Apply for Scheme", href: "/schemes", icon: "🎯", color: "#FF6B00" },
     { label: "📋 Track Application", href: "/dashboard", icon: "📊", color: "#0047AB" },
     { label: "🗣 File Grievance", href: "/grievance", icon: "📢", color: "#138808" },
-    { label: "📄 My Documents", href: "/chat", icon: "💬", color: "#6F42C1" },
+    { label: "📄 My Documents", href: "/chat", icon: "🗂️", color: "#6F42C1" },
 ];
 
 export default function DashboardPage() {

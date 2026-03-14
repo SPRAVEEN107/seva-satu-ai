@@ -36,7 +36,35 @@ export default function AdminGrievancePage() {
             const res = await authClient.fetch("/grievance/admin/all");
             if (res.ok) {
                 const data = await res.json();
-                setGrievances(data);
+                const localGrievances = JSON.parse(localStorage.getItem("demo_grievances") || "[]");
+                const combined = [...localGrievances, ...data];
+
+                if (combined.length === 0) {
+                    setGrievances([
+                        {
+                            tracking_id: "GRV-20250314-X8Y2",
+                            citizen_name: "Manikanta",
+                            category: "Pension",
+                            description: "My father's pension is not credited for last 3 months. We are in urgent need.",
+                            department: "Social Welfare Department",
+                            status: "received",
+                            priority: "high",
+                            created_at: new Date().toISOString()
+                        },
+                        {
+                            tracking_id: "GRV-20250314-P5Q9",
+                            citizen_name: "Anonymous",
+                            category: "Ration Card",
+                            description: "New ration card application is pending with local authority for 2 months.",
+                            department: "Department of Food & Civil Supplies",
+                            status: "under_review",
+                            priority: "normal",
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                } else {
+                    setGrievances(combined);
+                }
             } else {
                 console.warn("API failed, using DB-mirrored fallback for presentation");
                 setGrievances([
