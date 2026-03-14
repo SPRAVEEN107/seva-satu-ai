@@ -32,74 +32,58 @@ export default function AdminGrievancePage() {
     }, []);
 
     const fetchGrievances = async () => {
+        // ALWAYS start with demo baseline so something is visible immediately
+        const demoBase = [
+            {
+                tracking_id: "GRV-20250314-X8Y2",
+                citizen_name: "Manikanta",
+                category: "Pension",
+                description: "My father's pension is not credited for last 3 months. We are in urgent need.",
+                department: "Social Welfare Department",
+                status: "received",
+                priority: "high",
+                created_at: new Date(Date.now() - 3600000).toISOString(),
+                _source: "demo"
+            },
+            {
+                tracking_id: "GRV-20250314-P5Q9",
+                citizen_name: "Anonymous",
+                category: "Ration Card",
+                description: "New ration card application is pending with local authority for 2 months.",
+                department: "Department of Food & Civil Supplies",
+                status: "under_review",
+                priority: "normal",
+                created_at: new Date(Date.now() - 7200000).toISOString(),
+                _source: "demo"
+            }
+        ];
+
+        // Pull any grievances submitted via the form (stored in localStorage)
+        const localGrievances: any[] = JSON.parse(localStorage.getItem("demo_grievances") || "[]")
+            .map((g: any) => ({ ...g, _source: "local", citizen_name: g.citizen_name || "Citizen" }));
+
+        // Dedup: remove demo entries whose tracking_id is already in local
+        const localIds = new Set(localGrievances.map((g: any) => g.tracking_id));
+        const filteredDemo = demoBase.filter(d => !localIds.has(d.tracking_id));
+
+        // Show local + demo immediately (before API resolves)
+        setGrievances([...localGrievances, ...filteredDemo]);
+        setLoading(false);
+
+        // Then try to fetch real DB records and merge
         try {
             const res = await authClient.fetch("/grievance/admin/all");
             if (res.ok) {
                 const data: any[] = await res.json();
-                // Mark real DB records so we can display a badge
-                const dbRecords = data.map((g: any) => ({ ...g, _source: "db" }));
-                
-                if (dbRecords.length > 0) {
-                    // Real DB data available — show it directly (no mixing with demo)
-                    setGrievances(dbRecords);
-                } else {
-                    // DB returned 0 records — show demo data for presentation
-                    setGrievances([
-                        {
-                            tracking_id: "GRV-20250314-X8Y2",
-                            citizen_name: "Manikanta",
-                            category: "Pension",
-                            description: "My father's pension is not credited for last 3 months. We are in urgent need.",
-                            department: "Social Welfare Department",
-                            status: "received",
-                            priority: "high",
-                            created_at: new Date().toISOString(),
-                            _source: "demo"
-                        },
-                        {
-                            tracking_id: "GRV-20250314-P5Q9",
-                            citizen_name: "Anonymous",
-                            category: "Ration Card",
-                            description: "New ration card application is pending with local authority for 2 months.",
-                            department: "Department of Food & Civil Supplies",
-                            status: "under_review",
-                            priority: "normal",
-                            created_at: new Date().toISOString(),
-                            _source: "demo"
-                        }
-                    ]);
-                }
-            } else {
-                console.warn("API unavailable, using demo fallback");
-                setGrievances([
-                    {
-                        tracking_id: "GRV-20250314-X8Y2",
-                        citizen_name: "Manikanta",
-                        category: "Pension",
-                        description: "My father's pension is not credited for last 3 months. We are in urgent need.",
-                        department: "Social Welfare Department",
-                        status: "received",
-                        priority: "high",
-                        created_at: new Date().toISOString(),
-                        _source: "demo"
-                    },
-                    {
-                        tracking_id: "GRV-20250314-P5Q9",
-                        citizen_name: "Anonymous",
-                        category: "Ration Card",
-                        description: "New ration card application is pending with local authority for 2 months.",
-                        department: "Department of Food & Civil Supplies",
-                        status: "under_review",
-                        priority: "normal",
-                        created_at: new Date().toISOString(),
-                        _source: "demo"
-                    }
-                ]);
+                const dbRecords = data.map((g: any) => ({ ...g, _source: "db", citizen_name: g.citizen_name || "Citizen" }));
+                const dbIds = new Set(dbRecords.map((g: any) => g.tracking_id));
+                // Keep local/demo entries not already in DB, then put DB records on top
+                const nonDbLocal = localGrievances.filter((g: any) => !dbIds.has(g.tracking_id));
+                const nonDbDemo = filteredDemo.filter((d: any) => !dbIds.has(d.tracking_id));
+                setGrievances([...dbRecords, ...nonDbLocal, ...nonDbDemo]);
             }
         } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
+            console.error("DB fetch failed, showing local+demo data", err);
         }
     };
 
