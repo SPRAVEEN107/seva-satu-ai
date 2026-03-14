@@ -179,7 +179,7 @@ export default function SchemesPage() {
         {/* Header */}
         <section className="py-10 px-4 text-center border-b border-card-border">
           <h1 className="font-display text-3xl md:text-4xl text-text-primary mb-2">
-            {translate("Government Schemes")} — <span className="saffron-text">NSWP Portal</span>
+            {translate("Government Schemes")} — <span className="saffron-text">{translate("NSWP Portal")}</span>
           </h1>
           <p className="text-muted text-sm max-w-2xl mx-auto">
             {translate("All Central & State Government Schemes in one place. Select your home state to see applicable schemes.")}
@@ -187,18 +187,18 @@ export default function SchemesPage() {
           {/* Tabs */}
           <div className="flex flex-wrap justify-center gap-2 mt-6">
             {[
-              { id: "central", label: "🏛️ Central Govt", color: "saffron" },
-              { id: "state", label: "🗺️ State Schemes", color: "blue" },
-              { id: "pm", label: "👑 PM Schemes", color: "green" },
-              { id: "bpl", label: "🤲 BPL Schemes", color: "orange" },
-              { id: "women", label: "👩 Women Schemes", color: "pink" },
+              { id: "central", label: "🏛️ Central Govt", key: "Central Govt" },
+              { id: "state", label: "🗺️ State Schemes", key: "State Schemes" },
+              { id: "pm", label: "👑 PM Schemes", key: "PM Schemes" },
+              { id: "bpl", label: "🤲 BPL Schemes", key: "BPL Schemes" },
+              { id: "women", label: "👩 Women Schemes", key: "Women Schemes" },
             ].map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
                 className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${activeTab === tab.id
                   ? "bg-saffron border-saffron text-white"
                   : "border-white/10 text-white/60 hover:border-saffron/30 hover:text-white"
                   }`}>
-                {tab.label}
+                {translate(tab.key)}
               </button>
             ))}
           </div>

@@ -50,7 +50,7 @@ export default function Navbar() {
                                 <span className="font-display text-xl leading-none text-white tracking-wide">
                                     Seva<span className="text-saffron font-extrabold tracking-tight">Setu</span>
                                 </span>
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">Government of India</span>
+                                <span className="text-[10px] uppercase tracking-[0.2em] text-muted font-bold">{translate("Government of India")}</span>
                             </div>
                         </Link>
 

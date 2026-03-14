@@ -7,7 +7,7 @@ import { useLanguage, SUPPORTED_LANGUAGES, SupportedLanguage } from "@/lib/Langu
 import gsap from "gsap";
 
 export default function LanguageSelectionPage() {
-    const { setLanguage } = useLanguage();
+    const { setLanguage, translate } = useLanguage();
     const router = useRouter();
     const containerRef = useRef<HTMLDivElement>(null);
     const titleRef = useRef<HTMLHeadingElement>(null);
@@ -50,7 +50,7 @@ export default function LanguageSelectionPage() {
                     
                     {/* NSWP Badge */}
                     <div className="mb-4 inline-block bg-saffron/10 border border-saffron/30 rounded-full px-5 py-1.5">
-                        <span className="text-saffron text-xs font-bold uppercase tracking-[0.3em]">National Single Window Portal</span>
+                        <span className="text-saffron text-xs font-bold uppercase tracking-[0.3em]">{translate("National Single Window Portal")}</span>
                     </div>
                     
                     <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-3">
@@ -59,10 +59,10 @@ export default function LanguageSelectionPage() {
                     <div className="h-1 w-32 bg-gradient-to-r from-saffron via-white to-[#138808] mx-auto mb-4 rounded-full opacity-70" />
                     
                     <p className="text-lg md:text-xl text-text-primary font-medium mb-2">
-                        अपनी भाषा चुनें • Select Your Language
+                        {translate("Select Your Language")}
                     </p>
-                    <p className="text-muted text-xs tracking-widest mb-5 uppercase">
-                        भारत सरकार • Digital India • Government of India
+                    <p className="text-muted text-[10px] tracking-widest mb-5 uppercase">
+                        Digital India • Government of India
                     </p>
 
                     {/* Feature badges */}
@@ -76,7 +76,7 @@ export default function LanguageSelectionPage() {
                             { icon: "👑", label: "PM Schemes" },
                         ].map(f => (
                             <span key={f.label} className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/60 text-[10px] font-semibold flex items-center gap-1.5 uppercase tracking-wider">
-                                {f.icon} {f.label}
+                                {f.icon} {translate(f.label)}
                             </span>
                         ))}
                     </div>
@@ -113,12 +113,12 @@ export default function LanguageSelectionPage() {
                     href="/admin/login" 
                     className="text-[10px] text-muted/60 hover:text-saffron transition-colors uppercase tracking-[0.2em] font-bold py-2 px-4 rounded-full border border-white/5 hover:border-saffron/20 hover:bg-saffron/5"
                 >
-                    🔐 System Admin Login
+                    🔐 {translate("System Admin Login")}
                 </Link>
             </div>
             
             <div className="absolute bottom-6 text-center text-[9px] text-muted/30 z-10 w-full uppercase tracking-[0.2em] font-bold">
-                National Informatics Centre (NIC) • Digital India • SevaSetu NSWP v2.0 • © 2025 Govt of India
+                Digital India • SevaSetu NSWP v2.0 • © 2025 Govt of India
             </div>
         </div>
     );

@@ -152,14 +152,14 @@ export default function DashboardPage() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-start justify-between gap-2">
-                                                <h3 className="text-sm font-semibold text-text-primary">{app.scheme}</h3>
+                                                <h3 className="text-sm font-semibold text-text-primary">{translate(app.scheme)}</h3>
                                                 <span className={`badge text-xs flex-shrink-0 status-${app.status}`}>
-                                                    {app.status.replace("_", " ")}
+                                                    {translate(app.status.replace("_", " "))}
                                                 </span>
                                             </div>
                                             <p className="text-xs font-mono text-muted mt-0.5">{app.ref}</p>
-                                            <p className="text-xs text-muted mt-1">{app.next}</p>
-                                            <p className="text-xs text-muted/60 mt-0.5">{app.date}</p>
+                                            <p className="text-xs text-muted mt-1">{translate(app.next)}</p>
+                                            <p className="text-xs text-muted/60 mt-0.5">{translate(app.date)}</p>
                                         </div>
                                     </div>
                                 ))}
