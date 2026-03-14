@@ -1,6 +1,6 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com";
 
 export const authClient = {
   setToken: (token: string) => {

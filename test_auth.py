@@ -1,7 +1,8 @@
 import requests
 
 def test_auth():
-    base_url = "http://localhost:8000/auth"
+    # Testing production endpoint as per user request
+    base_url = "https://seva-satu-ai.onrender.com/auth"
     
     # Test Registration
     signup_data = {

@@ -57,7 +57,7 @@ npm run dev
 
 **Environment Variables (`frontend/.env.local`):**
 ```
-NEXT_PUBLIC_API_URL=https://savasetu-backend.onrender.com
+NEXT_PUBLIC_API_URL=https://seva-satu-ai.onrender.com
 NEXT_PUBLIC_APP_NAME=Savasetu AI
 ```
 
@@ -72,8 +72,8 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 cp .env.example .env          # Fill in your values
 uvicorn main:app --reload
-# API at http://localhost:8000
-# Docs at http://localhost:8000/docs
+# API at https://seva-satu-ai.onrender.com
+# Docs at https://seva-satu-ai.onrender.com/docs
 ```
 
 **Environment Variables (`backend/.env`):**
