@@ -10,6 +10,7 @@ export default function VoiceAssistant() {
   const [response, setResponse] = useState("");
   const recRef = useRef<any>(null);
   const wakeRef = useRef<any>(null);
+  const transcriptRef = useRef(""); // Use ref for stable closure access
 
   // ── Speak helper ──────────────────────────────────────────────
   const speak = (text: string, onDone?: () => void) => {
@@ -29,7 +30,7 @@ export default function VoiceAssistant() {
     let reply = "";
     let path = "";
 
-    if (t.match(/scheme|yojana|योजना|திட்டம்|women|महिला|bpl|pm scheme/)) {
+    if (t.match(/scheme|yojana|योजना|திட்டம்|women|महिला|bpl|pm scheme|apply/)) {
       path = "/schemes"; reply = "Opening Government Schemes";
     } else if (t.match(/grievance|complaint|शिकायत|புகார்|register/)) {
       path = "/grievance"; reply = "Opening Complaint Registration";
@@ -69,13 +70,16 @@ export default function VoiceAssistant() {
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
+    transcriptRef.current = ""; // Reset ref
+
     rec.onstart = () => setPhase("listening");
     rec.onresult = (e: any) => {
       const t = e.results[0][0].transcript;
+      transcriptRef.current = t;
       setTranscript(t);
     };
     rec.onend = () => {
-      const finalTranscript = transcript;
+      const finalTranscript = transcriptRef.current;
       if (finalTranscript.trim()) {
         setPhase("responding");
         handleCommand(finalTranscript);
@@ -117,6 +121,7 @@ export default function VoiceAssistant() {
         try { wake.abort(); } catch {}
         setPhase("awake");
         setTranscript("");
+        transcriptRef.current = "";
         setResponse("");
         speak("Hello! I am SevaSetu. How can I help you today?", () => {
           startCommandListen();

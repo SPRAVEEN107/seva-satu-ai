@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import SchemeCard from "@/components/SchemeCard";
 import { schemesAPI, type Scheme } from "@/lib/api";
@@ -137,6 +138,11 @@ export default function SchemesPage() {
   const [incomeRange, setIncomeRange] = useState("");
   const [activeTab, setActiveTab] = useState<"central" | "state" | "pm" | "bpl" | "women">("central");
   const [stateQuery, setStateQuery] = useState("");
+  const router = useRouter();
+
+  const handleApply = (schemeName: string) => {
+    router.push(`/grievance?scheme=${encodeURIComponent(schemeName)}`);
+  };
 
   const fetchSchemes = async (newPage = 1) => {
     setLoading(true);
@@ -243,7 +249,10 @@ export default function SchemesPage() {
                         </div>
                         <h4 className="font-display text-white text-base font-semibold mb-1">{s.name}</h4>
                         <p className="text-white/50 text-xs leading-relaxed">{s.desc}</p>
-                        <button className="mt-3 text-xs text-saffron hover:text-orange-400 transition-colors font-medium flex items-center gap-1">
+                        <button 
+                          onClick={() => handleApply(s.name)}
+                          className="mt-3 text-xs text-saffron hover:text-orange-400 transition-colors font-medium flex items-center gap-1"
+                        >
                           Apply Now →
                         </button>
                       </div>
@@ -283,7 +292,12 @@ export default function SchemesPage() {
                   </div>
                   <h4 className="font-display text-white text-sm font-semibold mb-1">{s.name}</h4>
                   <p className="text-white/50 text-xs leading-relaxed">{s.desc}</p>
-                  <button className="mt-3 text-xs text-green-400 hover:text-green-300 transition-colors font-medium">Apply Now →</button>
+                  <button 
+                    onClick={() => handleApply(s.name)}
+                    className="mt-3 text-xs text-green-400 hover:text-green-300 transition-colors font-medium"
+                  >
+                    Apply Now →
+                  </button>
                 </div>
               ))}
             </div>
@@ -302,7 +316,12 @@ export default function SchemesPage() {
                   <h4 className="font-display text-white text-sm font-semibold mb-1">{s.name}</h4>
                   <p className="text-white/50 text-xs leading-relaxed mb-2">{s.desc}</p>
                   <span className="text-xs text-saffron font-semibold">{s.benefit}</span>
-                  <button className="mt-3 text-xs text-orange-400 hover:text-orange-300 transition-colors font-medium flex items-center gap-1 ml-auto">Apply →</button>
+                  <button 
+                    onClick={() => handleApply(s.name)}
+                    className="mt-3 text-xs text-orange-400 hover:text-orange-300 transition-colors font-medium flex items-center gap-1 ml-auto"
+                  >
+                    Apply →
+                  </button>
                 </div>
               ))}
             </div>
@@ -330,6 +349,12 @@ export default function SchemesPage() {
                   <h4 className="font-display text-white text-sm font-semibold mb-1">{s.name}</h4>
                   <p className="text-white/50 text-xs leading-relaxed mb-2">{s.desc}</p>
                   <span className="text-xs text-saffron font-semibold">{s.benefit}</span>
+                  <button 
+                    onClick={() => handleApply(s.name)}
+                    className="mt-3 text-xs text-pink-400 hover:text-pink-300 transition-colors font-medium flex items-center gap-1 ml-auto"
+                  >
+                    Apply Now →
+                  </button>
                 </div>
               ))}
             </div>
@@ -401,7 +426,12 @@ export default function SchemesPage() {
                   <p className="text-muted text-sm mb-6">{translate(`Showing ${schemes.length} of ${total} schemes`)}</p>
                   <div className="scheme-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {schemes.map(scheme => (
-                      <SchemeCard key={scheme.id} scheme={scheme} matchScore={80} />
+                      <SchemeCard 
+                        key={scheme.id} 
+                        scheme={scheme} 
+                        matchScore={80} 
+                        onApply={() => handleApply(scheme.name)}
+                      />
                     ))}
                   </div>
                   {total > 12 && (
