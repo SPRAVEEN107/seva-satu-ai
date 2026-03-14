@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import GrievanceForm from "@/components/GrievanceForm";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -20,7 +21,9 @@ export default function GrievancePage() {
                     </p>
                 </section>
                 <div className="py-10 px-4">
-                    <GrievanceForm />
+                    <Suspense fallback={<div className="text-center py-20 text-white/50">Loading form...</div>}>
+                        <GrievanceForm />
+                    </Suspense>
                 </div>
             </main>
         </>

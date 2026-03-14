@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { grievanceAPI } from "@/lib/api";
 import { animateStepper, animateSubmitSuccess } from "@/lib/gsap";
 import { gsap } from "@/lib/gsap";
@@ -74,6 +75,25 @@ export default function GrievanceForm() {
   const { translate, language } = useLanguage();
   const successRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const schemeParam = searchParams.get("scheme");
+    if (schemeParam) {
+      setDescription(`I would like to apply for the "${schemeParam}" scheme. Please help me with the registration process.`);
+      // Try to auto-detect category based on common scheme keywords
+      const lowScheme = schemeParam.toLowerCase();
+      if (lowScheme.includes("ration") || lowScheme.includes("anna")) setCategory("Ration Card");
+      else if (lowScheme.includes("pension") || lowScheme.includes("old age")) setCategory("Pension");
+      else if (lowScheme.includes("housing") || lowScheme.includes("awas")) setCategory("Housing");
+      else if (lowScheme.includes("kisan") || lowScheme.includes("farmer")) setCategory("Other");
+      else if (lowScheme.includes("health") || lowScheme.includes("ayushman")) setCategory("Healthcare");
+      else if (lowScheme.includes("women") || lowScheme.includes("kanya")) setCategory("Other");
+      
+      // Auto-advance to step 1 if category is set or just pre-fill description
+      if (category) setStep(1); 
+    }
+  }, [searchParams]);
 
   const toggleDictation = (target: "description" | "state" | "district" | "name" | "phone") => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -92,11 +112,19 @@ export default function GrievanceForm() {
       else if (target === "state") setState(text);
       else if (target === "district") setDistrict(text);
       else if (target === "name") setCitizenName(text);
-      else if (target === "phone") setCitizenPhone(text);
+      else if (target === "phone") setCitizenPhone(text.replace(/\s/g, ''));
     };
-    recognition.onerror = () => setIsListeningDictation(false);
+    recognition.onerror = (e: any) => {
+      console.error("Dictation error:", e.error);
+      setIsListeningDictation(false);
+    };
     recognition.onend = () => setIsListeningDictation(false);
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error("Dictation start failed:", e);
+      setIsListeningDictation(false);
+    }
   };
 
   const advanceTo = (nextStep: number) => {

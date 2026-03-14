@@ -5,45 +5,93 @@ import { useRouter } from "next/navigation";
 
 export default function VoiceAssistant() {
   const router = useRouter();
-  const [phase, setPhase] = useState<"idle" | "awake" | "listening" | "responding">("idle");
+  const [phase, setPhase] = useState<"idle" | "awake" | "listening" | "responding" | "error">("idle");
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  
   const recRef = useRef<any>(null);
   const wakeRef = useRef<any>(null);
-  const transcriptRef = useRef(""); // Use ref for stable closure access
+  const transcriptRef = useRef("");
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // ── Audio Feedback (Beep) ──────────────────────────────────────
+  const playBeep = (freq = 660, type: OscillatorType = "sine", duration = 0.1) => {
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) {
+      console.warn("Audio feedback failed", e);
+    }
+  };
 
   // ── Speak helper ──────────────────────────────────────────────
   const speak = (text: string, onDone?: () => void) => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-IN";
     u.rate = 1.0;
     u.pitch = 1.1;
-    if (onDone) u.onend = onDone;
+
+    let callbackCalled = false;
+    const safeDone = () => {
+      if (callbackCalled) return;
+      callbackCalled = true;
+      if (onDone) onDone();
+    };
+
+    u.onend = safeDone;
+    u.onerror = safeDone;
+    
+    // Safety fallback: if speech doesn't end (common on some browsers/Windows)
+    // estimated duration: word count * 0.5s + 2s padding
+    const timeout = (text.split(" ").length * 500) + 2000;
+    setTimeout(safeDone, timeout);
+
     window.speechSynthesis.speak(u);
   };
 
-  // ── Route commands ─────────────────────────────────────────────
+  // ── Command Handling ───────────────────────────────────────────
   const handleCommand = (text: string) => {
-    const t = text.toLowerCase();
+    const t = text.toLowerCase().trim();
     let reply = "";
     let path = "";
 
-    if (t.match(/scheme|yojana|योजना|திட்டம்|women|महिला|bpl|pm scheme|apply/)) {
-      path = "/schemes"; reply = "Opening Government Schemes";
-    } else if (t.match(/grievance|complaint|शिकायत|புகார்|register/)) {
-      path = "/grievance"; reply = "Opening Complaint Registration";
-    } else if (t.match(/dashboard|home|डैशबोर्ड/)) {
-      path = "/dashboard"; reply = "Going to your Dashboard";
-    } else if (t.match(/eligib|पात्रता|தகுதி|check/)) {
-      path = "/eligibility"; reply = "Checking your eligibility";
-    } else if (t.match(/chat|help|मदद|support/)) {
-      path = "/chat"; reply = "Opening AI Chat";
-    } else if (t.match(/track|status|ट्रैक/)) {
-      path = "/grievance"; reply = "Opening complaint tracking";
+    // Exact or Fuzzy matching for fast navigation
+    if (t.match(/scheme|yojana|योजना|திட்டம்|apply|लागू|वैकल्पिक|benefits|i want schemes|take me to schemes/)) {
+      path = "/schemes"; reply = "Opening Schemes.";
+    } else if (t.match(/grievance|complaint|शिकायत|புகார்|register|file|problem|i want to complain/)) {
+      path = "/grievance"; reply = "Opening Grievance.";
+    } else if (t.match(/dashboard|home|डैशबोर्ड|status|go home/)) {
+      path = "/dashboard"; reply = "Opening Dashboard.";
+    } else if (t.match(/eligib|पात्रता|தகுதி|check|qualified|am i eligible/)) {
+      path = "/eligibility"; reply = "Checking eligibility.";
+    } else if (t.match(/chat|help|मदद|support|ai|talk|i want to chat/)) {
+      path = "/chat"; reply = "Opening AI Chat.";
+    } else if (t.match(/track|id|status/)) {
+      path = "/grievance"; reply = "Tracking complaint.";
+    } else if (t.match(/women|महिला|female/)) {
+      path = "/schemes"; reply = "Showing Women schemes.";
+    } else if (t.match(/poor|bpl|गरीब/)) {
+      path = "/schemes"; reply = "Showing BPL schemes.";
     } else {
-      reply = "Say: Schemes, Grievance, Dashboard, Eligibility, or Chat";
+      reply = "I heard " + t + ". Please say Schemes or Grievance.";
     }
 
     setResponse(reply);
@@ -53,49 +101,74 @@ export default function VoiceAssistant() {
         router.push(path);
       } else {
         setPhase("awake");
-        startCommandListen();
+        setTimeout(() => startCommandListen(), 300);
       }
     });
   };
 
-  // ── Listen for one command ─────────────────────────────────────
+  // ── Command Listener ───────────────────────────────────────────
   const startCommandListen = () => {
-    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) return;
-    if (recRef.current) { try { recRef.current.abort(); } catch {} }
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+      setErrorMessage("Speech API not supported.");
+      setPhase("error");
+      return;
+    }
 
+    // Stop wake word temporarily
+    if (wakeRef.current) { try { wakeRef.current.abort(); } catch {} }
+    
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const rec = new SR();
     rec.lang = "en-IN";
     rec.continuous = false;
     rec.interimResults = true;
-    rec.maxAlternatives = 1;
 
-    transcriptRef.current = ""; // Reset ref
+    transcriptRef.current = "";
 
-    rec.onstart = () => setPhase("listening");
+    rec.onstart = () => {
+      setPhase("listening");
+    };
+
     rec.onresult = (e: any) => {
       const t = e.results[0][0].transcript;
       transcriptRef.current = t;
       setTranscript(t);
     };
+
     rec.onend = () => {
-      const finalTranscript = transcriptRef.current;
-      if (finalTranscript.trim()) {
+      const final = transcriptRef.current;
+      if (final.trim()) {
         setPhase("responding");
-        handleCommand(finalTranscript);
-      } else {
+        handleCommand(final);
+      } else if (phase === "listening") {
+        playBeep(440, "sine", 0.1);
         setPhase("idle");
         startWakeWord();
       }
     };
-    rec.onerror = () => { setPhase("idle"); startWakeWord(); };
+
+    rec.onerror = (e: any) => {
+      if (e.error !== "aborted" && phase === "listening") {
+        setPhase("idle");
+        startWakeWord();
+      }
+    };
+
     recRef.current = rec;
-    rec.start();
+    try { 
+      rec.start(); 
+    } catch (e) { 
+      setPhase("idle");
+      startWakeWord(); 
+    }
   };
 
-  // ── Wake word listener (always on) ────────────────────────────
+  // ── Wake Word Listener ─────────────────────────────────────────
   const startWakeWord = () => {
+    if (phase !== "idle") return;
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) return;
+    
+    // Clean up old instance
     if (wakeRef.current) { try { wakeRef.current.abort(); } catch {} }
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -109,60 +182,68 @@ export default function VoiceAssistant() {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         heard += e.results[i][0].transcript.toLowerCase();
       }
-      const matched =
-        heard.includes("hey sevasetu") ||
-        heard.includes("sevasetu") ||
-        heard.includes("seva setu") ||
-        heard.includes("hey seva") ||
-        heard.includes("हे सेवासेतु") ||
-        heard.includes("सेवासेतु");
-
-      if (matched) {
-        try { wake.abort(); } catch {}
+      
+      const triggers = [
+        "hey sevasetu", "sevasetu", "seva setu", "hey seva", "सेवासेतु", "नमस्ते", 
+        "hello sevasetu", "ok sevasetu", "hi sevasetu", "wake up", "setu",
+        "hey setu", "hey satu", "hey sattu", "hi setu", "hi satu"
+      ];
+      if (triggers.some(t => heard.includes(t))) {
+        try { wake.abort(); } catch {} 
         setPhase("awake");
         setTranscript("");
         transcriptRef.current = "";
         setResponse("");
-        speak("Hello! I am SevaSetu. How can I help you today?", () => {
-          startCommandListen();
-        });
+        playBeep(660, "sine", 0.1); // Wake up beep
+        
+        // Zero-latency: start listening IMMEDIATELY
+        startCommandListen();
+        
+        // Parallel greeting (don't block listening)
+        speak("Yes? I am listening.");
       }
     };
 
     wake.onend = () => {
-      // Restart if not woken
       if (phase === "idle") {
-        setTimeout(() => startWakeWord(), 300);
+        setTimeout(() => startWakeWord(), 400);
       }
     };
+
     wake.onerror = (e: any) => {
-      if (e.error !== "aborted") {
+      if (e.error === "not-allowed") {
+        setErrorMessage("Microphone access denied.");
+        setPhase("error");
+      } else if (e.error !== "aborted") {
         setTimeout(() => startWakeWord(), 1000);
       }
     };
 
     wakeRef.current = wake;
-    try { wake.start(); } catch {}
+    try { wake.start(); } catch (e) {
+      console.error("Wake start failed", e);
+      setTimeout(() => startWakeWord(), 2000);
+    }
   };
 
-  // Boot wake word on mount
   useEffect(() => {
-    const t = setTimeout(() => startWakeWord(), 500);
+    const t = setTimeout(() => startWakeWord(), 1000);
     return () => {
       clearTimeout(t);
       if (wakeRef.current) try { wakeRef.current.abort(); } catch {}
       if (recRef.current) try { recRef.current.abort(); } catch {}
-      window.speechSynthesis?.cancel();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
     };
   }, []);
 
-  // ── Manual activate ────────────────────────────────────────────
   const manualActivate = () => {
     if (wakeRef.current) try { wakeRef.current.abort(); } catch {}
     setPhase("awake");
     setTranscript("");
+    transcriptRef.current = "";
     setResponse("");
-    speak("Hello! I am SevaSetu. Please tell me what you need.", () => {
+    playBeep(660, "sine", 0.1);
+    speak("Yes, I am listening. Please tell me your command.", () => {
       startCommandListen();
     });
   };
@@ -172,112 +253,112 @@ export default function VoiceAssistant() {
     setTranscript("");
     setResponse("");
     if (recRef.current) try { recRef.current.abort(); } catch {}
-    window.speechSynthesis?.cancel();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     setTimeout(() => startWakeWord(), 500);
   };
 
-  // ── UI ─────────────────────────────────────────────────────────
   return (
     <>
-      {/* Floating mic button — always visible on every page */}
+      {/* Floating Button */}
       <button
         onClick={manualActivate}
-        aria-label="Activate SevaSetu Voice Assistant"
-        className={`
-          fixed bottom-8 right-8 z-[9999] w-16 h-16 rounded-full
-          flex flex-col items-center justify-center gap-0.5
-          shadow-[0_0_30px_rgba(255,107,0,0.6)] transition-all duration-200
-          hover:scale-110 active:scale-95
-          ${phase === "listening"
-            ? "bg-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.8)]"
-            : phase === "awake" || phase === "responding"
-            ? "bg-green-500 shadow-[0_0_30px_rgba(34,197,94,0.6)]"
-            : "bg-gradient-to-br from-[#FF6B00] to-[#FF8C00]"
-          }
+        className={`fixed bottom-8 right-8 z-[9999] w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95
+        ${phase === "listening" ? "bg-red-500 animate-pulse scale-110" : 
+          phase === "awake" || phase === "responding" ? "bg-green-500" : 
+          phase === "error" ? "bg-gray-700" : "bg-gradient-to-br from-saffron to-[#ff8c00]"}
         `}
       >
-        <span className="text-xl">
-          {phase === "listening" ? "🎙️" : phase === "responding" ? "💬" : "🎙️"}
+        <span className="text-2xl">
+          {phase === "listening" ? "🔊" : phase === "error" ? "⚠️" : "🎙️"}
         </span>
-        <span className="text-[8px] font-black text-white/90 tracking-tight">SETU</span>
+        <span className="text-[7px] font-black text-white tracking-widest uppercase">Setu</span>
       </button>
 
-      {/* Wake-word hint bubble */}
+      {/* Wake Hint */}
       {phase === "idle" && (
-        <div className="fixed bottom-28 right-6 z-[9998] bg-black/80 backdrop-blur border border-white/10 rounded-xl px-3 py-1.5 text-[10px] text-white/60 font-medium pointer-events-none">
-          Say <span className="text-saffron font-bold">&quot;Hey SevaSetu&quot;</span>
+        <div className="fixed bottom-28 right-8 z-[9998] bg-black/80 backdrop-blur border border-white/10 rounded-full px-4 py-2 text-[10px] text-white/80 font-bold pointer-events-none shadow-xl animate-bounce">
+          Say <span className="text-saffron">&quot;Hey SevaSetu&quot;</span>
         </div>
       )}
 
-      {/* Active overlay */}
+      {/* Full Overlay */}
       {phase !== "idle" && (
-        <div className="fixed inset-0 z-[9990] flex flex-col items-center justify-center bg-black/85 backdrop-blur-xl">
-          {/* Close */}
-          <button onClick={closeAssistant}
-            className="absolute top-6 right-6 text-white/40 hover:text-white text-2xl leading-none">✕</button>
+        <div className="fixed inset-0 z-[9990] flex flex-col items-center justify-center bg-[#050505]/95 backdrop-blur-2xl transition-all duration-500">
+          <button onClick={closeAssistant} className="absolute top-8 right-8 text-white/30 hover:text-white text-3xl">✕</button>
 
-          {/* Pulsing orb */}
-          <div className="relative mb-8">
-            <div className={`w-28 h-28 rounded-full flex items-center justify-center
-              ${phase === "listening"
-                ? "bg-red-500/20 border-2 border-red-400"
-                : "bg-saffron/20 border-2 border-saffron/60"}`}>
-              <span className="text-5xl">
-                {phase === "listening" ? "🎙️" : phase === "responding" ? "💬" : "✨"}
-              </span>
+          {/* Visual Orb */}
+          <div className="relative w-48 h-48 mb-12">
+            <div className={`absolute inset-0 rounded-full blur-3xl opacity-30 animate-pulse
+              ${phase === "listening" ? "bg-red-500" : "bg-saffron"}`} />
+            
+            <div className={`relative w-full h-full rounded-full border-2 flex items-center justify-center transition-all duration-500
+              ${phase === "listening" ? "border-red-500 bg-red-500/10 scale-110" : "border-saffron/40 bg-saffron/5"}`}>
+              
+              {phase === "listening" ? (
+                <div className="flex gap-1 items-end h-8">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="w-1.5 bg-red-400 rounded-full animate-wave" style={{animationDelay: `${i*0.1}s`}} />
+                  ))}
+                </div>
+              ) : (
+                <span className="text-6xl">{phase === "error" ? "❌" : "✨"}</span>
+              )}
             </div>
-            {phase === "listening" && (
-              <>
-                <div className="absolute inset-0 w-28 h-28 rounded-full bg-red-400/30 animate-ping" />
-                <div className="absolute -inset-4 w-36 h-36 rounded-full border border-saffron/20 animate-spin" style={{ animationDuration: "3s" }} />
-              </>
-            )}
           </div>
 
-          {/* Status text */}
-          <h2 className="text-white text-3xl font-display font-bold mb-2">
-            {phase === "listening" ? "Listening..." : phase === "responding" ? "Got it!" : "नमस्ते! SevaSetu"}
-          </h2>
-          <p className="text-saffron text-sm mb-6">
-            {phase === "listening" ? "Speak your command now" : phase === "responding" ? response : "Your AI Government Assistant"}
+          <h3 className="text-white text-4xl font-display font-bold mb-4 tracking-tight">
+            {phase === "listening" ? "I'm Listening..." : phase === "responding" ? "One Moment..." : phase === "error" ? "Something went wrong" : "SevaSetu AI"}
+          </h3>
+          
+          <p className="text-saffron text-lg font-medium mb-8 max-w-md text-center px-6">
+            {phase === "listening" ? "What government service do you need?" : phase === "error" ? errorMessage : response || "How can I assist you today?"}
           </p>
 
-          {/* Transcript */}
           {transcript && (
-            <div className="max-w-lg text-center px-6 mb-4">
-              <p className="text-white text-xl font-light">{transcript}</p>
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-8 py-4 max-w-2xl text-center shadow-xl mb-8">
+              <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-2">Transcript</p>
+              <p className="text-white text-2xl font-medium italic">&quot;{transcript}&quot;</p>
             </div>
           )}
 
-          {/* Quick command chips */}
           {phase === "awake" && (
-            <div className="flex flex-wrap gap-2 justify-center max-w-md px-4 mt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-2xl px-6">
               {[
-                ["Schemes", "/schemes"],
-                ["Grievance", "/grievance"],
-                ["Dashboard", "/dashboard"],
-                ["Eligibility", "/eligibility"],
-                ["Women Schemes", "/schemes"],
-                ["BPL Schemes", "/schemes"],
-              ].map(([label, path]) => (
-                <button key={label}
-                  onClick={() => { setPhase("idle"); router.push(path); }}
-                  className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/80 text-sm hover:bg-saffron/10 hover:border-saffron/40 transition-all">
-                  {label}
+                { label: "View Schemes", icon: "🏛️" },
+                { label: "File Grievance", icon: "📝" },
+                { label: "Dashboard", icon: "📊" },
+                { label: "Eligibility", icon: "⚖️" },
+                { label: "Women Schemes", icon: "👩" },
+                { label: "BPL Assist", icon: "🤲" },
+              ].map(cmd => (
+                <button key={cmd.label} 
+                  onClick={() => handleCommand(cmd.label)}
+                  className="bg-white/5 border border-white/10 hover:border-saffron/50 hover:bg-saffron/10 p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">
+                  <span className="text-2xl">{cmd.icon}</span>
+                  <span className="text-white/80 text-xs font-bold uppercase">{cmd.label}</span>
                 </button>
               ))}
             </div>
           )}
 
-          {/* Manual mic in awake state */}
-          {phase === "awake" && (
-            <button onClick={startCommandListen}
-              className="mt-6 px-8 py-3 rounded-full bg-saffron text-white font-bold text-sm hover:bg-orange-600 transition-all">
-              🎙️ Speak Now
+          {phase === "error" && (
+            <button onClick={() => { setPhase("idle"); setTimeout(() => startWakeWord(), 500); }}
+              className="mt-8 px-10 py-4 bg-saffron text-white rounded-full font-bold shadow-xl hover:scale-105 transition-transform">
+              Try Again
             </button>
           )}
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes wave {
+          0%, 100% { height: 10px; }
+          50% { height: 32px; }
+        }
+        .animate-wave {
+          animation: wave 1s ease-in-out infinite;
+        }
+      `}</style>
     </>
   );
 }
