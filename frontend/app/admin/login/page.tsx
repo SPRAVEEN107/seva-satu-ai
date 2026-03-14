@@ -41,7 +41,8 @@ export default function AdminLoginPage() {
                 // Simple role check mock: if email contains 'admin', go to admin
                 router.push("/admin");
             } else {
-                setError("Invalid admin credentials. Please try again.");
+                const errorData = await res.json();
+                setError(errorData.detail || "Invalid admin credentials. Please try again.");
             }
         } catch (err) {
             setError("Connection failed. Is the backend running?");

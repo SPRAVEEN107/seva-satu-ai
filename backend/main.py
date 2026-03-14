@@ -54,9 +54,18 @@ app.include_router(applications.router, prefix="/applications", tags=["Applicati
 
 @app.get("/health", tags=["Health"])
 async def health_check():
+    db_status = "Connected"
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+    except Exception as e:
+        db_status = f"Disconnected: {str(e)}"
+
     return {
         "status": "Savasetu AI is live",
-        "version": "1.0.0",
+        "database": db_status,
+        "version": "1.0.1",
         "tagline": "One AI platform connecting every citizen to every government service",
     }
 

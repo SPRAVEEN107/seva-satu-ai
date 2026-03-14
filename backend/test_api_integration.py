@@ -1,9 +1,27 @@
 import requests
 
 def test_api():
-    base_url = "http://localhost:8001"
+    base_url = "http://127.0.0.1:8002"
     
-    print("Testing Eligibility Check...")
+    print(f"--- Testing Backend at {base_url} ---")
+    
+    print("\n1. Testing Health Check...")
+    r = requests.get(f"{base_url}/health")
+    print(f"Health Response: {r.status_code}")
+    if r.status_code == 200:
+        print(f"Status: {r.json()}")
+
+    print("\n2. Testing Admin Login (/auth/login)...")
+    login_data = {
+        "email": "19792@apsrkpuram.edu.in",
+        "password": "123456789"
+    }
+    r = requests.post(f"{base_url}/auth/login", json=login_data)
+    print(f"Login Response: {r.status_code}")
+    if r.status_code == 200:
+        print("Login Success! Token received.")
+
+    print("\n3. Testing Eligibility Check...")
     eligibility_data = {
         "age": 25,
         "gender": "female",
@@ -16,9 +34,9 @@ def test_api():
     r = requests.post(f"{base_url}/eligibility/check", json=eligibility_data)
     print(f"Eligibility Response: {r.status_code}")
     if r.status_code == 200:
-        print(f"Data: {r.json()['eligible_schemes'][:2]}...") # Show first 2 results
+        print(f"Found {r.json()['total_matched']} eligible schemes.")
         
-    print("\nTesting AI Chat...")
+    print("\n4. Testing AI Chat...")
     chat_data = {
         "message": "What schemes are available for farmers in UP?",
         "language": "en"
@@ -26,7 +44,7 @@ def test_api():
     r = requests.post(f"{base_url}/ai-chat/message", json=chat_data)
     print(f"Chat Response: {r.status_code}")
     if r.status_code == 200:
-        print(f"Reply: {r.json()['reply'][:100]}...")
+        print(f"Reply Preview: {r.json()['reply'][:50]}...")
 
 if __name__ == "__main__":
     test_api()

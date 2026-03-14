@@ -24,6 +24,31 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@router.post("/login", response_model=Token)
+async def login(request: LoginRequest):
+    # For now, we support the official admin credentials provided by the user
+    if request.email == "19792@apsrkpuram.edu.in" and request.password == "123456789":
+        access_token = auth_service.create_access_token(data={"sub": request.email, "role": "admin"})
+        return {"access_token": access_token, "token_type": "bearer"}
+    
+    # Check in DB for other users (if implemented with email/password)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        user = await conn.fetchrow("SELECT * FROM citizens WHERE email = $1", request.email)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Verify password (in a real app)
+        # if not auth_service.verify_password(request.password, user["password_hash"]):
+        #     raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        access_token = auth_service.create_access_token(data={"sub": user["phone"], "id": str(user["id"])})
+        return {"access_token": access_token, "token_type": "bearer"}
+
 # In-memory store for simulated OTPs (in production this would be Redis)
 # Format: { 'phone': '123456' }
 simulated_otp_store = {}

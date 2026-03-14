@@ -16,21 +16,45 @@ _pool: Optional[asyncpg.Pool] = None
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        try:
-            print(f"[DB] Attempting to connect to: {DATABASE_URL.split('@')[-1].split('?')[0]}")
-            _pool = await asyncpg.create_pool(
-                DATABASE_URL,
-                min_size=2,
-                max_size=10,
-                command_timeout=60,
-            )
-            print("[DB] Database pool initialized successfully")
-        except Exception as e:
-            print(f"[DB] CRITICAL: Failed to initialize database pool: {e}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"Database Connection Error: {str(e)}. Please check your DATABASE_URL in Render env vars."
-            )
+        # Emergency Fallback logic for presentation
+        urls_to_try = [DATABASE_URL]
+        
+        # If using pooler, try direct host as backup
+        if "-pooler" in DATABASE_URL:
+            direct_url = DATABASE_URL.replace("-pooler", "")
+            urls_to_try.append(direct_url)
+        
+        # Try simplified URL (without extra params that might confuse Render/asyncpg)
+        if "?" in DATABASE_URL:
+            base_url = DATABASE_URL.split("?")[0] + "?sslmode=require"
+            if base_url not in urls_to_try:
+                urls_to_try.append(base_url)
+
+        last_error = None
+        for attempt, url in enumerate(urls_to_try):
+            try:
+                masked_url = url.split('@')[-1].split('?')[0]
+                print(f"[DB] Attempt {attempt+1}: Connecting to {masked_url}...")
+                
+                _pool = await asyncpg.create_pool(
+                    url,
+                    min_size=1,
+                    max_size=5, # Reduced for stability on free tiers
+                    command_timeout=30,
+                    connect_timeout=10,
+                )
+                print(f"[DB] Success! Connected on attempt {attempt+1}")
+                return _pool
+            except Exception as e:
+                print(f"[DB] Attempt {attempt+1} failed: {e}")
+                last_error = e
+        
+        # If all attempts fail
+        print(f"[DB] CRITICAL: All connection attempts failed.")
+        raise HTTPException(
+            status_code=500,
+            detail=f"[v11-Fallback] Database Unavailable: {str(last_error)}. Fix: Check Neon Console for 'Allowed IPs' or Typo in Render Env Vars."
+        )
     return _pool
 
 
