@@ -93,8 +93,24 @@ async def get_all_grievances_admin():
     """Admin endpoint to see all grievances."""
     try:
         data = await db_service.get_all_grievances()
-        return [GrievanceAdminItem(**item) for item in data]
+        print(f"[ADMIN] Retrieved {len(data)} grievances from DB")
+        results = []
+        for i, item in enumerate(data):
+            try:
+                results.append(GrievanceAdminItem(**item))
+            except Exception as ve:
+                print(f"[ADMIN] Row {i} failed validation: {ve}")
+                # Append a fallback if one row fails but others might work
+                results.append(GrievanceAdminItem(
+                    id=item.get("id"),
+                    tracking_id=item.get("tracking_id", "ERROR-VAL"),
+                    description=item.get("description", "Validation Error"),
+                    category=item.get("category", "Error"),
+                    department="Error", status="error"
+                ))
+        return results
     except Exception as e:
+        print(f"[ADMIN] CRITICAL ERROR in get_all_grievances_admin: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -51,17 +51,17 @@ class GrievanceAdminUpdate(BaseModel):
 
 
 class GrievanceAdminItem(BaseModel):
-    id: UUID
+    id: Optional[UUID] = None
     tracking_id: Optional[str] = None
-    citizen_name: Optional[str]
-    category: str
-    description: str
-    department: str
-    status: str
-    priority: str
-    estimated_days: int
-    created_at: datetime
-    last_updated: datetime
+    citizen_name: Optional[str] = "Anonymous"
+    category: Optional[str] = "Other"
+    description: Optional[str] = ""
+    department: Optional[str] = "General Administration"
+    status: Optional[str] = "received"
+    priority: Optional[str] = "normal"
+    estimated_days: Optional[int] = 30
+    created_at: Optional[datetime] = None
+    last_updated: Optional[datetime] = None
 
 
 class GrievanceClassification(BaseModel):
