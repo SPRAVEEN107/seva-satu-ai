@@ -41,7 +41,7 @@ async def get_pool() -> asyncpg.Pool:
                     min_size=1,
                     max_size=5, # Reduced for stability on free tiers
                     command_timeout=30,
-                    connect_timeout=10,
+                    timeout=10,
                 )
                 print(f"[DB] Success! Connected on attempt {attempt+1}")
                 return _pool
