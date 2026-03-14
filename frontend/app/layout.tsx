@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/LanguageContext";
 import AiVoiceAssistant from "@/lib/AiVoiceAssistant";
+import VoiceAssistant from "@/components/VoiceAssistant";
+import AccessibilityToolbar from "@/components/AccessibilityToolbar";
 
 export const metadata: Metadata = {
-    title: "SevaSetu — Citizen-Government Bridge for Rural India",
+    title: "SevaSetu — National Single Window Portal | Govt of India",
     description:
-        "One platform connecting every citizen to every government scheme. Find eligibility, apply for benefits, file grievances — all in your language.",
-    keywords: "government schemes, India, rural, PM Kisan, Ayushman Bharat, eligibility, AI",
+        "National Single Window Portal (NSWP) — One platform for all Central & State Government Schemes. Accessible to all citizens including blind, deaf & speech-impaired. AI-powered in 14+ languages.",
+    keywords: "NSWP, National Single Window Portal, government schemes, India, PM Kisan, Ayushman Bharat, BPL schemes, women schemes, SevaSetu, Digital India",
     openGraph: {
-        title: "SevaSetu",
-        description: "AI-powered access to 1000+ government schemes in your language",
+        title: "SevaSetu NSWP — National Single Window Portal",
+        description: "All Government Schemes. All Citizens. All Languages.",
         type: "website",
     },
 };
@@ -34,6 +36,8 @@ export default function RootLayout({
                 <LanguageProvider>
                     {children}
                     <AiVoiceAssistant />
+                    <VoiceAssistant />
+                    <AccessibilityToolbar />
                 </LanguageProvider>
             </body>
         </html>

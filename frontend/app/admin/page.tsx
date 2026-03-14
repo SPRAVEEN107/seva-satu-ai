@@ -105,6 +105,11 @@ export default function AdminGrievancePage() {
 
     useEffect(() => {
         loadGrievances();
+        // Auto-refresh every 15 seconds for live updates
+        const interval = setInterval(() => {
+            loadGrievances();
+        }, 15000);
+        return () => clearInterval(interval);
     }, []);
 
     const loadGrievances = async () => {
@@ -198,8 +203,8 @@ export default function AdminGrievancePage() {
                     {/* ─── Header ─────────────────────────────── */}
                     <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
                         <div>
-                            <h1 className="font-display text-3xl text-text-primary">Admin Control Center</h1>
-                            <p className="text-muted mt-1">Real-time grievance management across all departments.</p>
+                            <h1 className="font-display text-3xl text-text-primary">🏛️ Admin Control Center</h1>
+                            <p className="text-muted mt-1">SevaSetu NSWP — Real-time grievance management. Auto-refreshes every 15 seconds.</p>
                             <div className="flex items-center gap-3 mt-2 flex-wrap">
                                 <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
                                     dbStatus === "connected" ? "text-green-400 bg-green-400/10 border-green-400/30" :
@@ -395,8 +400,12 @@ export default function AdminGrievancePage() {
 
                             <div className="space-y-5 mt-6">
                                 <div>
-                                    <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">Citizen</label>
-                                    <div className="glass-card rounded-xl p-3 text-sm text-text-primary">{selectedGrievance.citizen_name || "Anonymous"}{selectedGrievance.district ? ` — ${selectedGrievance.district}, ${selectedGrievance.state}` : ""}</div>
+                                    <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">Citizen Info</label>
+                                    <div className="glass-card rounded-xl p-3 text-sm">
+                                        <p className="text-text-primary font-medium">{selectedGrievance.citizen_name || "Anonymous"}</p>
+                                        {selectedGrievance.citizen_phone && <a href={`tel:${selectedGrievance.citizen_phone}`} className="text-green-400 text-xs">📞 {selectedGrievance.citizen_phone}</a>}
+                                        {selectedGrievance.district && <p className="text-muted text-xs mt-1">📍 {selectedGrievance.district}, {selectedGrievance.state}</p>}
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">Category</label>
@@ -404,7 +413,7 @@ export default function AdminGrievancePage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-1">Description</label>
-                                    <div className="glass-card rounded-xl p-4 text-sm text-muted leading-relaxed italic border-l-2 border-saffron/30">"{selectedGrievance.description}"</div>
+                                    <div className="glass-card rounded-xl p-4 text-sm text-muted leading-relaxed italic border-l-2 border-saffron/30">&quot;{selectedGrievance.description}&quot;</div>
                                 </div>
                                 <hr className="border-card-border" />
                                 <div>
@@ -439,6 +448,37 @@ export default function AdminGrievancePage() {
                                         />
                                     </div>
                                 </div>
+                                {/* Assigned Employee - from GrievanceForm auto-assign */}
+                                {(selectedGrievance.assigned_employee || selectedGrievance.assigned_to_name) && (
+                                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+                                        <p className="text-blue-400 text-xs font-bold mb-3">👤 ASSIGNED OFFICER</p>
+                                        {selectedGrievance.assigned_employee ? (
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted">Name</span>
+                                                    <span className="text-white font-semibold">{selectedGrievance.assigned_employee.name}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted">Employee ID</span>
+                                                    <code className="text-blue-400 text-xs">{selectedGrievance.assigned_employee.empId}</code>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted">Department</span>
+                                                    <span className="text-white/70 text-xs text-right max-w-[55%]">{selectedGrievance.assigned_employee.dept}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-muted">📞 Phone</span>
+                                                    <a href={`tel:${selectedGrievance.assigned_employee.phone}`} className="text-green-400 font-bold hover:underline">{selectedGrievance.assigned_employee.phone}</a>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-sm">
+                                                <p className="text-white">{selectedGrievance.assigned_to_name}</p>
+                                                <p className="text-muted text-xs">{selectedGrievance.assigned_to_employee_id}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Update Status</label>
                                     <div className="grid grid-cols-2 gap-2">
