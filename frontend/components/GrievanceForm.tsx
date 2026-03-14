@@ -128,13 +128,25 @@ export default function GrievanceForm() {
         } catch {
             // EMERGENCY FALLBACK for presentation
             console.warn("API failed, using success fallback for presentation");
-            setResult({
+            const fallbackResult = {
                 tracking_id: `GRV-20250314-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
                 department: "General Administration",
                 priority: "normal",
+                status: "received", // Added status for consistency
+                category: category,    // Added category
+                description: description, // Added description
+                citizen_name: "Citizen",  // Default name
+                created_at: new Date().toISOString(),
                 estimated_days: 15,
-                message: "Your grievance has been registered (Demo Mode)."
-            });
+                message: "Your grievance has been registered (Demo Mode).",
+                _source: "local" // Mark as local for admin portal
+            };
+            setResult(fallbackResult);
+            
+            // SYNC FOR PRESENTATION
+            const localGrievances = JSON.parse(localStorage.getItem("demo_grievances") || "[]");
+            localStorage.setItem("demo_grievances", JSON.stringify([fallbackResult, ...localGrievances]));
+
             setStep(2);
             animateStepper(2);
             setTimeout(() => {

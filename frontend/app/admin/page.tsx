@@ -44,7 +44,8 @@ const DEMO_GRIEVANCES = [
         priority: "high",
         created_at: new Date(Date.now() - 3600000).toISOString(),
         district: "Hyderabad",
-        state: "Telangana",
+        assigned_to_name: "S. Praveen",
+        assigned_to_employee_id: "EMP-2024-001",
         _source: "demo",
     },
     {
@@ -58,6 +59,8 @@ const DEMO_GRIEVANCES = [
         created_at: new Date(Date.now() - 7200000).toISOString(),
         district: "Lucknow",
         state: "Uttar Pradesh",
+        assigned_to_name: "Amit Kumar",
+        assigned_to_employee_id: "EMP-2024-042",
         _source: "demo",
     },
     {
@@ -70,7 +73,8 @@ const DEMO_GRIEVANCES = [
         priority: "high",
         created_at: new Date(Date.now() - 1800000).toISOString(),
         district: "Pune",
-        state: "Maharashtra",
+        assigned_to_name: "Anjali Singh",
+        assigned_to_employee_id: "EMP-2024-089",
         _source: "demo",
     },
     {
@@ -84,6 +88,8 @@ const DEMO_GRIEVANCES = [
         created_at: new Date(Date.now() - 86400000).toISOString(),
         district: "Varanasi",
         state: "Uttar Pradesh",
+        assigned_to_name: "Rajesh Varma",
+        assigned_to_employee_id: "EMP-2023-112",
         _source: "demo",
     },
 ];
@@ -281,6 +287,7 @@ export default function AdminGrievancePage() {
                                         <div className="flex justify-between items-start gap-4">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                    <span className="text-[10px] text-muted font-bold uppercase tracking-wider">Complaint ID:</span>
                                                     <code className="text-xs font-mono text-saffron bg-saffron/10 px-2 py-0.5 rounded">{g.tracking_id}</code>
                                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${STATUS_COLOR[g.status] || ""}`}>{g.status?.replace("_", " ")}</span>
                                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${PRIORITY_COLOR[g.priority] || ""}`}>{g.priority}</span>
@@ -351,6 +358,7 @@ export default function AdminGrievancePage() {
                                                             </div>
                                                             <div>
                                                                 <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                                    <span className="text-[10px] text-muted font-bold uppercase tracking-wider">ID:</span>
                                                                     <code className="text-xs font-mono text-saffron">{g.tracking_id}</code>
                                                                     <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${STATUS_COLOR[g.status] || ""}`}>{g.status?.replace("_", " ")}</span>
                                                                     <SourceBadge source={g._source} />
