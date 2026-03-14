@@ -1,4 +1,5 @@
 import asyncpg
+from urllib.parse import urlparse, urlunparse
 import os
 import uuid
 from datetime import datetime
@@ -33,15 +34,22 @@ async def get_pool() -> asyncpg.Pool:
         last_error = None
         for attempt, url in enumerate(urls_to_try):
             try:
-                masked_url = url.split('@')[-1].split('?')[0]
-                print(f"[DB] Attempt {attempt+1}: Connecting to {masked_url}...")
+                # asyncpg works better when params like sslmode are handled explicitly
+                parsed = urlparse(url)
+                stripped_url = urlunparse((
+                    parsed.scheme, parsed.netloc, parsed.path, "", "", ""
+                ))
+                
+                masked_host = parsed.hostname
+                print(f"[DB] Attempt {attempt+1}: Connecting to {masked_host} (ssl=True)...")
                 
                 _pool = await asyncpg.create_pool(
-                    url,
+                    stripped_url,
                     min_size=1,
-                    max_size=5, # Reduced for stability on free tiers
+                    max_size=5,
                     command_timeout=30,
                     timeout=10,
+                    ssl=True # Neon requires SSL
                 )
                 print(f"[DB] Success! Connected on attempt {attempt+1}")
                 return _pool
