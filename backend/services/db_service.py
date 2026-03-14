@@ -3,6 +3,7 @@ import os
 import uuid
 from datetime import datetime
 from typing import Optional
+from fastapi import HTTPException
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,12 +16,21 @@ _pool: Optional[asyncpg.Pool] = None
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        _pool = await asyncpg.create_pool(
-            DATABASE_URL,
-            min_size=2,
-            max_size=10,
-            command_timeout=60,
-        )
+        try:
+            print(f"[DB] Attempting to connect to: {DATABASE_URL.split('@')[-1].split('?')[0]}")
+            _pool = await asyncpg.create_pool(
+                DATABASE_URL,
+                min_size=2,
+                max_size=10,
+                command_timeout=60,
+            )
+            print("[DB] Database pool initialized successfully")
+        except Exception as e:
+            print(f"[DB] CRITICAL: Failed to initialize database pool: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Database Connection Error: {str(e)}. Please check your DATABASE_URL in Render env vars."
+            )
     return _pool
 
 

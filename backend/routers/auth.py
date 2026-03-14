@@ -50,47 +50,37 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 
 @router.post("/generate-otp")
 async def generate_otp(request: PhoneRequest):
-    try:
-        pool = await get_pool()
-        async with pool.acquire() as conn:
-            # Check if citizen exists
-            existing_user = await conn.fetchval("SELECT id FROM citizens WHERE phone = $1", request.phone)
-            
-            # If new user and name is missing, ask for registration details
-            if not existing_user and not request.name:
-                return {"message": "New User. Registration required.", "requires_registration": True}
-            
-            if not existing_user:
-                if not request.aadhaar_number:
-                    raise HTTPException(status_code=400, detail="Aadhaar number is required for registration.")
-                    
-                try:
-                    await conn.execute(
-                        """
-                        INSERT INTO citizens (phone, name, aadhaar_number)
-                        VALUES ($1, $2, $3)
-                        """,
-                        request.phone, request.name, request.aadhaar_number
-                    )
-                except Exception as e:
-                    raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        # Check if citizen exists
+        existing_user = await conn.fetchval("SELECT id FROM citizens WHERE phone = $1", request.phone)
+        
+        # If new user and name is missing, ask for registration details
+        if not existing_user and not request.name:
+            return {"message": "New User. Registration required.", "requires_registration": True}
+        
+        if not existing_user:
+            if not request.aadhaar_number:
+                raise HTTPException(status_code=400, detail="Aadhaar number is required for registration.")
+                
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO citizens (phone, name, aadhaar_number)
+                    VALUES ($1, $2, $3)
+                    """,
+                    request.phone, request.name, request.aadhaar_number
+                )
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
-            # Print OTP to console for debugging, return it for seamless testing
-            otp = str(random.randint(100000, 999999))
-            simulated_otp_store[request.phone] = otp
-            print(f"[AUTH] Generated OTP for {request.phone}: {otp}")
-            
-            # In a real app we'd SMS this. Here, we return it to auto-fill the frontend.
-            return {"status": "success", "message": "OTP sent successfully", "simulated_otp": otp}
-    except Exception as global_e:
-        print(f"[AUTH] Critical Failure: {str(global_e)}")
-        # Raise as HTTPException to ensure CORS headers are added by FastAPI middleware
-        if isinstance(global_e, HTTPException):
-            raise global_e
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Server Error: {str(global_e)}. Please check if your database is connected."
-        )
+        # Print OTP to console for debugging, return it for seamless testing
+        otp = str(random.randint(100000, 999999))
+        simulated_otp_store[request.phone] = otp
+        print(f"Generated OTP for {request.phone}: {otp}")
+        
+        # In a real app we'd SMS this. Here, we return it to auto-fill the frontend.
+        return {"message": "OTP sent successfully", "simulated_otp": otp}
 
 @router.post("/verify-otp", response_model=Token)
 async def verify_otp(request: OTPVerifyRequest):
@@ -114,21 +104,6 @@ async def verify_otp(request: OTPVerifyRequest):
         simulated_otp_store.pop(request.phone, None)
         
         return {"access_token": access_token, "token_type": "bearer"}
-
-
-@router.post("/login", response_model=Token)
-async def login(request: dict):
-    # This is a simplified login for admin/official access as used in admin/login/page.tsx
-    # In a real app, this would verify against a database
-    email = request.get("email")
-    password = request.get("password")
-    
-    # Official admin access from the frontend code
-    if email == "19792@apsrkpuram.edu.in" and password == "123456789":
-         access_token = auth_service.create_access_token(data={"sub": email, "role": "admin"})
-         return {"access_token": access_token, "token_type": "bearer"}
-         
-    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):

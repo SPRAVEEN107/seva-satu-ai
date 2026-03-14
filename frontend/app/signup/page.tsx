@@ -35,9 +35,8 @@ export default function SignupPage() {
     setLoading(true);
     setError("");
 
-    const baseURL = (process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com").replace(/\/$/, "");
     try {
-      const res = await fetch(`${baseURL}/auth/generate-otp`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com"}/auth/generate-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -56,8 +55,7 @@ export default function SignupPage() {
         }
         setStep(2);
       } else {
-        const detail = data.detail || (data.message && data.message.includes("New User") ? translate("Account needs registration") : null);
-        setError(detail || translate("Failed to register"));
+        setError(data.detail || translate("Failed to register"));
       }
     } catch (err) {
       setError(translate("An error occurred. Please try again."));
@@ -71,9 +69,8 @@ export default function SignupPage() {
     setLoading(true);
     setError("");
 
-    const baseURL = (process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com").replace(/\/$/, "");
     try {
-      const res = await fetch(`${baseURL}/auth/verify-otp`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://seva-satu-ai.onrender.com"}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: formData.phone, otp }),
@@ -85,7 +82,7 @@ export default function SignupPage() {
         authClient.setToken(data.access_token);
         router.push("/dashboard");
       } else {
-        setError(data.detail || translate("Invalid OTP or User not found"));
+        setError(data.detail || translate("Invalid OTP"));
       }
     } catch (err) {
       setError(translate("An error occurred. Please try again."));

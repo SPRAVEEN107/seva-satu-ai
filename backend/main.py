@@ -28,17 +28,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Custom middleware to log requests for debugging CORS/Path issues
-@app.middleware("http")
-async def log_requests(request, call_next):
-    origin = request.headers.get("origin")
-    print(f"[DEBUG] Incoming {request.method} {request.url.path} from {origin}")
-    response = await call_next(request)
-    return response
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Temporarily allow all for debugging CORS issues
+    allow_origins=[
+        "https://savasetu.vercel.app",
+        "https://savasetu-ai.vercel.app",
+        "https://seva-satu-ai.vercel.app",
+        "https://sevasetu-ai.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,7 +56,7 @@ app.include_router(applications.router, prefix="/applications", tags=["Applicati
 async def health_check():
     return {
         "status": "Savasetu AI is live",
-        "version": "1.0.1",
+        "version": "1.0.0",
         "tagline": "One AI platform connecting every citizen to every government service",
     }
 

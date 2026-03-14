@@ -29,8 +29,7 @@ export default function AdminLoginPage() {
 
             // In a real app, this would be a proper admin check
             // For now, we reuse the common login but redirect to admin
-            const baseURL = (process.env.NEXT_PUBLIC_API_URL || 'https://seva-satu-ai.onrender.com').replace(/\/$/, '');
-            const res = await fetch(`${baseURL}/auth/login`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://seva-satu-ai.onrender.com'}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
