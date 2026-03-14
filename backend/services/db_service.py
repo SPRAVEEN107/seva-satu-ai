@@ -255,7 +255,11 @@ async def get_all_grievances() -> list[dict]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT g.*, c.name as citizen_name
+            """SELECT g.id, g.tracking_id, g.category, g.description, g.department,
+                      g.status, g.priority, g.estimated_days, g.district, g.state,
+                      g.assigned_to_name, g.assigned_to_employee_id,
+                      g.created_at, g.last_updated,
+                      c.name as citizen_name
                FROM grievances g
                LEFT JOIN citizens c ON g.citizen_id = c.id
                ORDER BY g.created_at DESC"""
@@ -263,8 +267,10 @@ async def get_all_grievances() -> list[dict]:
         return [dict(r) for r in rows]
 
 
-async def update_grievance_admin(tracking_id: str, status: Optional[str] = None, 
-                                department: Optional[str] = None, event_text: Optional[str] = None) -> bool:
+async def update_grievance_admin(tracking_id: str, status: Optional[str] = None,
+                                department: Optional[str] = None, event_text: Optional[str] = None,
+                                assigned_to_name: Optional[str] = None,
+                                assigned_to_employee_id: Optional[str] = None) -> bool:
     pool = await get_pool()
     async with pool.acquire() as conn:
         # Get grievance id
@@ -288,6 +294,14 @@ async def update_grievance_admin(tracking_id: str, status: Optional[str] = None,
             if department:
                 updates.append(f"department = ${idx}")
                 params.append(department)
+                idx += 1
+            if assigned_to_name is not None:
+                updates.append(f"assigned_to_name = ${idx}")
+                params.append(assigned_to_name)
+                idx += 1
+            if assigned_to_employee_id is not None:
+                updates.append(f"assigned_to_employee_id = ${idx}")
+                params.append(assigned_to_employee_id)
                 idx += 1
             
             if updates:

@@ -48,6 +48,8 @@ class GrievanceAdminUpdate(BaseModel):
     status: Optional[str] = None
     department: Optional[str] = None
     event_text: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    assigned_to_employee_id: Optional[str] = None
 
 
 class GrievanceAdminItem(BaseModel):
@@ -60,6 +62,10 @@ class GrievanceAdminItem(BaseModel):
     status: Optional[str] = "received"
     priority: Optional[str] = "normal"
     estimated_days: Optional[int] = 30
+    district: Optional[str] = None
+    state: Optional[str] = None
+    assigned_to_name: Optional[str] = None
+    assigned_to_employee_id: Optional[str] = None
     created_at: Optional[datetime] = None
     last_updated: Optional[datetime] = None
 

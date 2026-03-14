@@ -117,13 +117,15 @@ async def get_all_grievances_admin():
 
 @router.patch("/admin/update/{tracking_id}")
 async def update_grievance_status_admin(tracking_id: str, request: GrievanceAdminUpdate):
-    """Admin endpoint to update status and department."""
+    """Admin endpoint to update status, department and assigned handler."""
     try:
         success = await db_service.update_grievance_admin(
             tracking_id=tracking_id,
             status=request.status,
             department=request.department,
-            event_text=request.event_text
+            event_text=request.event_text,
+            assigned_to_name=request.assigned_to_name,
+            assigned_to_employee_id=request.assigned_to_employee_id,
         )
         if not success:
             raise HTTPException(status_code=404, detail="Grievance not found")

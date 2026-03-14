@@ -286,6 +286,11 @@ export default function AdminGrievancePage() {
                                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${PRIORITY_COLOR[g.priority] || ""}`}>{g.priority}</span>
                                                     <SourceBadge source={g._source} />
                                                     <span className="text-xs text-muted">👤 {g.citizen_name || "Anonymous"}</span>
+                                                    {g.assigned_to_name && (
+                                                        <span className="text-xs text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded border border-indigo-400/20 flex items-center gap-1">
+                                                            👮 {g.assigned_to_name} ({g.assigned_to_employee_id})
+                                                        </span>
+                                                    )}
                                                     {g.district && <span className="text-xs text-muted">📍 {g.district}, {g.state}</span>}
                                                 </div>
                                                 <h3 className="text-base font-semibold text-text-primary group-hover:text-saffron transition-colors">{g.category}</h3>
@@ -351,8 +356,9 @@ export default function AdminGrievancePage() {
                                                                     <SourceBadge source={g._source} />
                                                                 </div>
                                                                 <p className="text-sm font-medium text-text-primary">{g.category} — <span className="text-muted font-normal text-xs">{g.description?.slice(0, 80)}...</span></p>
-                                                                <div className="flex gap-3 mt-1 text-xs text-muted">
+                                                                <div className="flex gap-3 mt-1 text-xs text-muted flex-wrap">
                                                                     <span>👤 {g.citizen_name || "Anonymous"}</span>
+                                                                    {g.assigned_to_name && <span className="text-indigo-400 font-medium">👮 {g.assigned_to_name} ({g.assigned_to_employee_id})</span>}
                                                                     {g.district && <span>📍 {g.district}</span>}
                                                                     <span>🕐 {new Date(g.created_at).toLocaleDateString("en-IN")}</span>
                                                                 </div>
@@ -397,11 +403,33 @@ export default function AdminGrievancePage() {
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Assign Department</label>
                                     <select
                                         className="w-full input-dark rounded-xl p-3 text-sm"
-                                        defaultValue={selectedGrievance.department}
+                                        value={selectedGrievance.department}
                                         onChange={(e) => handleUpdate(selectedGrievance.tracking_id, { department: e.target.value })}
                                     >
                                         {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
                                     </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Handler Name</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Officer Name"
+                                            value={selectedGrievance.assigned_to_name || ""}
+                                            onChange={(e) => handleUpdate(selectedGrievance.tracking_id, { assigned_to_name: e.target.value })}
+                                            className="w-full input-dark rounded-xl p-3 text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Employee ID</label>
+                                        <input
+                                            type="text"
+                                            placeholder="ID-12345"
+                                            value={selectedGrievance.assigned_to_employee_id || ""}
+                                            onChange={(e) => handleUpdate(selectedGrievance.tracking_id, { assigned_to_employee_id: e.target.value })}
+                                            className="w-full input-dark rounded-xl p-3 text-sm"
+                                        />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">Update Status</label>
