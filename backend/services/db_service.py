@@ -188,6 +188,18 @@ async def get_citizen_applications(citizen_id: str) -> list[dict]:
 async def save_grievance(data: dict) -> str:
     pool = await get_pool()
     tracking_id = f"GRV-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
+    print(f"[DB] Saving grievance: category={data.get('category')}, tracking_id={tracking_id}")
+    
+    # Safely parse citizen_id - None is OK (anonymous submission)
+    citizen_id_val = None
+    raw_cid = data.get("citizen_id")
+    if raw_cid:
+        try:
+            citizen_id_val = uuid.UUID(str(raw_cid))
+        except (ValueError, AttributeError):
+            print(f"[DB] Warning: Invalid citizen_id '{raw_cid}', saving as anonymous")
+            citizen_id_val = None
+
     async with pool.acquire() as conn:
         async with conn.transaction():
             grievance_id = await conn.fetchval(
@@ -195,9 +207,9 @@ async def save_grievance(data: dict) -> str:
                    department, tracking_id, priority, estimated_days, district, state)
                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                    RETURNING id""",
-                uuid.UUID(data["citizen_id"]) if data.get("citizen_id") else None,
-                data.get("category"),
-                data.get("description"),
+                citizen_id_val,
+                data.get("category", "Other"),
+                data.get("description", ""),
                 data.get("department", "General Administration"),
                 tracking_id,
                 data.get("priority", "normal"),
@@ -205,6 +217,7 @@ async def save_grievance(data: dict) -> str:
                 data.get("district"),
                 data.get("state"),
             )
+            print(f"[DB] Grievance inserted with id={grievance_id}")
             # Insert initial timeline event
             await conn.execute(
                 """INSERT INTO grievance_timeline (grievance_id, event_text, status)
@@ -213,6 +226,7 @@ async def save_grievance(data: dict) -> str:
                 "Grievance received and registered successfully.",
                 "received",
             )
+    print(f"[DB] ✅ Grievance saved successfully: {tracking_id}")
     return tracking_id
 
 

@@ -37,10 +37,11 @@ async def submit_grievance(request: GrievanceSubmit):
 
     try:
         tracking_id = await db_service.save_grievance(grievance_data)
-    except Exception:
-        # Generate tracking ID even if DB fails
-        suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        tracking_id = f"GRV-{datetime.now().strftime('%Y%m%d')}-{suffix}"
+    except Exception as e:
+        print(f"[ERROR] Failed to save grievance to DB: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
     return GrievanceResponse(
         tracking_id=tracking_id,

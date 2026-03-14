@@ -35,11 +35,15 @@ export default function AdminGrievancePage() {
         try {
             const res = await authClient.fetch("/grievance/admin/all");
             if (res.ok) {
-                const data = await res.json();
-                const localGrievances = JSON.parse(localStorage.getItem("demo_grievances") || "[]");
-                const combined = [...localGrievances, ...data];
-
-                if (combined.length === 0) {
+                const data: any[] = await res.json();
+                // Mark real DB records so we can display a badge
+                const dbRecords = data.map((g: any) => ({ ...g, _source: "db" }));
+                
+                if (dbRecords.length > 0) {
+                    // Real DB data available — show it directly (no mixing with demo)
+                    setGrievances(dbRecords);
+                } else {
+                    // DB returned 0 records — show demo data for presentation
                     setGrievances([
                         {
                             tracking_id: "GRV-20250314-X8Y2",
@@ -49,7 +53,8 @@ export default function AdminGrievancePage() {
                             department: "Social Welfare Department",
                             status: "received",
                             priority: "high",
-                            created_at: new Date().toISOString()
+                            created_at: new Date().toISOString(),
+                            _source: "demo"
                         },
                         {
                             tracking_id: "GRV-20250314-P5Q9",
@@ -59,14 +64,13 @@ export default function AdminGrievancePage() {
                             department: "Department of Food & Civil Supplies",
                             status: "under_review",
                             priority: "normal",
-                            created_at: new Date().toISOString()
+                            created_at: new Date().toISOString(),
+                            _source: "demo"
                         }
                     ]);
-                } else {
-                    setGrievances(combined);
                 }
             } else {
-                console.warn("API failed, using DB-mirrored fallback for presentation");
+                console.warn("API unavailable, using demo fallback");
                 setGrievances([
                     {
                         tracking_id: "GRV-20250314-X8Y2",
@@ -76,7 +80,8 @@ export default function AdminGrievancePage() {
                         department: "Social Welfare Department",
                         status: "received",
                         priority: "high",
-                        created_at: new Date().toISOString()
+                        created_at: new Date().toISOString(),
+                        _source: "demo"
                     },
                     {
                         tracking_id: "GRV-20250314-P5Q9",
@@ -86,7 +91,8 @@ export default function AdminGrievancePage() {
                         department: "Department of Food & Civil Supplies",
                         status: "under_review",
                         priority: "normal",
-                        created_at: new Date().toISOString()
+                        created_at: new Date().toISOString(),
+                        _source: "demo"
                     }
                 ]);
             }
@@ -129,8 +135,24 @@ export default function AdminGrievancePage() {
                         <div>
                             <h1 className="font-display text-3xl text-text-primary">Admin Control Center</h1>
                             <p className="text-muted mt-1">Manage and categorize citizen grievances across departments.</p>
+                            {!loading && (
+                                <div className="flex items-center gap-2 mt-2">
+                                    <span className="text-green-400 font-bold text-sm">
+                                        🟢 {grievances.filter(g => g._source === "db").length} Live DB Record(s)
+                                    </span>
+                                    <span className="text-muted text-sm">
+                                        · {grievances.length} total shown
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className="flex gap-3">
+                            <button
+                                onClick={fetchGrievances}
+                                className="btn-outline px-4 py-2 rounded-lg text-sm font-medium"
+                            >
+                                🔄 Refresh
+                            </button>
                             <select
                                 className="input-dark rounded-lg px-4 py-2 text-sm"
                                 value={filterDept}
@@ -161,7 +183,7 @@ export default function AdminGrievancePage() {
                                     >
                                         <div className="flex justify-between items-start">
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-3 mb-2">
+                                                <div className="flex items-center flex-wrap gap-2 mb-2">
                                                     <span className="text-xs font-mono text-saffron bg-saffron/10 px-2 py-1 rounded">
                                                         {g.tracking_id}
                                                     </span>
@@ -171,6 +193,15 @@ export default function AdminGrievancePage() {
                                                     <span className="text-xs text-muted flex items-center gap-1">
                                                         👤 {g.citizen_name || "Anonymous"}
                                                     </span>
+                                                    {g._source === "db" ? (
+                                                        <span className="text-[10px] font-bold text-green-400 bg-green-400/10 border border-green-400/30 px-2 py-0.5 rounded-full">
+                                                            🟢 LIVE DB
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-gray-400 bg-gray-400/10 border border-gray-400/20 px-2 py-0.5 rounded-full">
+                                                            DEMO
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <h3 className="text-lg font-semibold text-text-primary group-hover:text-saffron transition-colors">
                                                     {g.category}
