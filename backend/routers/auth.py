@@ -105,6 +105,21 @@ async def verify_otp(request: OTPVerifyRequest):
         
         return {"access_token": access_token, "token_type": "bearer"}
 
+
+@router.post("/login", response_model=Token)
+async def login(request: dict):
+    # This is a simplified login for admin/official access as used in admin/login/page.tsx
+    # In a real app, this would verify against a database
+    email = request.get("email")
+    password = request.get("password")
+    
+    # Official admin access from the frontend code
+    if email == "19792@apsrkpuram.edu.in" and password == "123456789":
+         access_token = auth_service.create_access_token(data={"sub": email, "role": "admin"})
+         return {"access_token": access_token, "token_type": "bearer"}
+         
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):
     return {

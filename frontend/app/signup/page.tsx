@@ -55,7 +55,8 @@ export default function SignupPage() {
         }
         setStep(2);
       } else {
-        setError(data.detail || translate("Failed to register"));
+        const detail = data.detail || (data.message && data.message.includes("New User") ? translate("Account needs registration") : null);
+        setError(detail || translate("Failed to register"));
       }
     } catch (err) {
       setError(translate("An error occurred. Please try again."));
@@ -82,7 +83,7 @@ export default function SignupPage() {
         authClient.setToken(data.access_token);
         router.push("/dashboard");
       } else {
-        setError(data.detail || translate("Invalid OTP"));
+        setError(data.detail || translate("Invalid OTP or User not found"));
       }
     } catch (err) {
       setError(translate("An error occurred. Please try again."));

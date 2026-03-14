@@ -80,7 +80,7 @@ export default function LoginPage() {
         authClient.setToken(data.access_token);
         router.push("/dashboard");
       } else {
-        setError(data.detail || translate("Invalid OTP"));
+        setError(data.detail || translate("Invalid OTP or Account not found"));
       }
     } catch (err) {
       console.warn("Backend unavailable, using mock login for demo");

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
-        domains: ["savasetu-backend.onrender.com"],
+        domains: ["seva-satu-ai.onrender.com", "savasetu-backend.onrender.com"],
     },
 };
 
