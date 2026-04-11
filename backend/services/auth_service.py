@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+from jose import JWTError, jwt # type: ignore
+from passlib.context import CryptContext # type: ignore
 import os
 import pathlib
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 
 # Load .env from the same directory as this file (backend/.env)
 _env_path = pathlib.Path(__file__).parent.parent / ".env"
@@ -36,6 +36,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 def decode_access_token(token: str):
     try:
         decoded_token = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return decoded_token if decoded_token["exp"] >= datetime.utcnow().timestamp() else None
+        return decoded_token
     except JWTError:
         return None

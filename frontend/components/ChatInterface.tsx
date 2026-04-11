@@ -106,6 +106,7 @@ export default function ChatInterface() {
                 message: text,
                 language,
                 history,
+                citizen_id: "demo-citizen-uuid", // This should be dynamic in a real app
             });
 
             const aiMsg: Message = {

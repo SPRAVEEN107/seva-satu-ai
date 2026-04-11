@@ -1,7 +1,13 @@
-import requests
+import requests # type: ignore
+import sys
+
+# Ensure UTF-8 output for emojis in Windows console
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def test_api():
-    base_url = "http://127.0.0.1:8002"
+    base_url = "http://127.0.0.1:8000"
     
     print(f"--- Testing Backend at {base_url} ---")
     

@@ -17,10 +17,10 @@ export default function LanguageSelectionPage() {
     useEffect(() => {
         const ctx = gsap.context(() => {
             if (titleRef.current) {
-                gsap.from(titleRef.current, { y: 20, opacity: 0, duration: 0.8, ease: "power2.out" });
+                gsap.fromTo(titleRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: "power2.out" });
             }
             if (gridRef.current) {
-                gsap.from(gridRef.current.children, { y: 10, opacity: 0, duration: 0.3, stagger: 0.03, ease: "power1.out", delay: 0.2 });
+                gsap.fromTo(gridRef.current.children, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.03, ease: "power1.out", delay: 0.2 });
             }
         }, containerRef);
         return () => ctx.revert();

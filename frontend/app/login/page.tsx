@@ -48,15 +48,11 @@ export default function LoginPage() {
         }
         setStep(2);
       } else {
-        // EMERGENCY FALLBACK for presentation
-        console.warn("Backend 404/Error. Falling back to Demo Mode.");
-        setOtp("123456");
-        setStep(2);
+        const data = await res.json().catch(() => ({ detail: "Failed to generate OTP" }));
+        setError(data.detail || translate("Failed to send OTP. Please try again."));
       }
     } catch (err) {
-      console.warn("Backend unavailable, using mock OTP for demo");
-      setOtp("123456");
-      setStep(2);
+      setError(translate("Network error. Please check your connection."));
     } finally {
       setLoading(false);
     }
@@ -80,14 +76,10 @@ export default function LoginPage() {
         authClient.setToken(data.access_token);
         router.push("/dashboard");
       } else {
-        // EMERGENCY FALLBACK for presentation
-        authClient.setToken("mock_admin_token");
-        router.push("/dashboard");
+        setError(data.detail || translate("Invalid OTP. Please try again."));
       }
     } catch (err) {
-      console.warn("Backend unavailable, using mock login for demo");
-      authClient.setToken("mock_token_for_demo");
-      router.push("/dashboard");
+      setError(translate("Connection error. Login failed."));
     } finally {
       setLoading(false);
     }

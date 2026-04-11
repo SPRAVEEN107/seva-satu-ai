@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/LanguageContext";
+import { chatAPI } from "@/lib/api";
 
 export default function VoiceAssistant() {
   const router = useRouter();
+  const { language, translate } = useLanguage();
+  
   const [phase, setPhase] = useState<"idle" | "awake" | "listening" | "responding" | "error">("idle");
   const [transcript, setTranscript] = useState("");
   const [response, setResponse] = useState("");
@@ -14,6 +18,13 @@ export default function VoiceAssistant() {
   const wakeRef = useRef<any>(null);
   const transcriptRef = useRef("");
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // BCP-47 Language Mapping
+  const langMap: Record<string, string> = {
+    en: "en-IN", hi: "hi-IN", te: "te-IN", ta: "ta-IN", mr: "mr-IN", 
+    kn: "kn-IN", bn: "bn-IN", gu: "gu-IN", ml: "ml-IN", pa: "pa-IN"
+  };
+  const currentLocale = langMap[language] || "en-IN";
 
   // ── Audio Feedback (Beep) ──────────────────────────────────────
   const playBeep = (freq = 660, type: OscillatorType = "sine", duration = 0.1) => {
@@ -45,9 +56,9 @@ export default function VoiceAssistant() {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-IN";
+    u.lang = currentLocale;
     u.rate = 1.0;
-    u.pitch = 1.1;
+    u.pitch = 1.0;
 
     let callbackCalled = false;
     const safeDone = () => {
@@ -59,51 +70,64 @@ export default function VoiceAssistant() {
     u.onend = safeDone;
     u.onerror = safeDone;
     
-    // Safety fallback: if speech doesn't end (common on some browsers/Windows)
-    // estimated duration: word count * 0.5s + 2s padding
-    const timeout = (text.split(" ").length * 500) + 2000;
+    const timeout = (text.split(" ").length * 500) + 3000;
     setTimeout(safeDone, timeout);
 
     window.speechSynthesis.speak(u);
   };
 
-  // ── Command Handling ───────────────────────────────────────────
-  const handleCommand = (text: string) => {
+  // ── AI Command/Query Handling ──────────────────────────────────
+  const handleCommand = async (text: string) => {
     const t = text.toLowerCase().trim();
     let reply = "";
     let path = "";
 
-    // Exact or Fuzzy matching for fast navigation
-    if (t.match(/scheme|yojana|योजना|திட்டம்|apply|लागू|वैकल्पिक|benefits|i want schemes|take me to schemes/)) {
-      path = "/schemes"; reply = "Opening Schemes.";
-    } else if (t.match(/grievance|complaint|शिकायत|புகார்|register|file|problem|i want to complain/)) {
-      path = "/grievance"; reply = "Opening Grievance.";
-    } else if (t.match(/dashboard|home|डैशबोर्ड|status|go home/)) {
-      path = "/dashboard"; reply = "Opening Dashboard.";
-    } else if (t.match(/eligib|पात्रता|தகுதி|check|qualified|am i eligible/)) {
-      path = "/eligibility"; reply = "Checking eligibility.";
-    } else if (t.match(/chat|help|मदद|support|ai|talk|i want to chat/)) {
-      path = "/chat"; reply = "Opening AI Chat.";
-    } else if (t.match(/track|id|status/)) {
-      path = "/grievance"; reply = "Tracking complaint.";
-    } else if (t.match(/women|महिला|female/)) {
-      path = "/schemes"; reply = "Showing Women schemes.";
-    } else if (t.match(/poor|bpl|गरीब/)) {
-      path = "/schemes"; reply = "Showing BPL schemes.";
-    } else {
-      reply = "I heard " + t + ". Please say Schemes or Grievance.";
+    // 1. Navigation Shortcuts (Fast Response)
+    if (t.match(/scheme|yojana|योजना|திட்டம்|apply|లాగు|वैकल्पिक|benefits/)) {
+      path = "/schemes"; reply = translate("Opening Schemes.");
+    } else if (t.match(/grievance|complaint|शिकायत|புகார்|register|file|problem/)) {
+      path = "/grievance"; reply = translate("Opening Grievance.");
+    } else if (t.match(/dashboard|home|डैशबोर्ड|status/)) {
+      path = "/dashboard"; reply = translate("Opening Dashboard.");
+    } else if (t.match(/eligib|पात्रता|தகுதி|check|qualified/)) {
+      path = "/eligibility"; reply = translate("Checking eligibility.");
+    } else if (t.match(/chat|help|मदद|support|ai|talk/)) {
+      path = "/chat"; reply = translate("Opening AI Chat.");
     }
 
-    setResponse(reply);
-    speak(reply, () => {
-      if (path) {
+    if (path) {
+      setResponse(reply);
+      speak(reply, () => {
         setPhase("idle");
         router.push(path);
-      } else {
+      });
+      return;
+    }
+
+    // 2. Smart AI Response (Backend Integration)
+    setPhase("responding");
+    try {
+      const res = await chatAPI.sendMessage({
+        message: text,
+        language: language,
+        citizen_id: "demo-citizen-123"
+      });
+      
+      const aiReply = res.data.reply;
+      setResponse(aiReply);
+      speak(aiReply, () => {
         setPhase("awake");
-        setTimeout(() => startCommandListen(), 300);
-      }
-    });
+        setTimeout(() => startCommandListen(), 500);
+      });
+    } catch (err) {
+      console.error("SETU AI failed", err);
+      const fallback = "I'm having trouble connecting right now. Please try again.";
+      setResponse(fallback);
+      speak(fallback, () => {
+        setPhase("idle");
+        startWakeWord();
+      });
+    }
   };
 
   // ── Command Listener ───────────────────────────────────────────
@@ -114,12 +138,11 @@ export default function VoiceAssistant() {
       return;
     }
 
-    // Stop wake word temporarily
     if (wakeRef.current) { try { wakeRef.current.abort(); } catch {} }
     
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const rec = new SR();
-    rec.lang = "en-IN";
+    rec.lang = currentLocale;
     rec.continuous = false;
     rec.interimResults = true;
 
@@ -138,10 +161,8 @@ export default function VoiceAssistant() {
     rec.onend = () => {
       const final = transcriptRef.current;
       if (final.trim()) {
-        setPhase("responding");
         handleCommand(final);
       } else if (phase === "listening") {
-        playBeep(440, "sine", 0.1);
         setPhase("idle");
         startWakeWord();
       }
@@ -155,9 +176,7 @@ export default function VoiceAssistant() {
     };
 
     recRef.current = rec;
-    try { 
-      rec.start(); 
-    } catch (e) { 
+    try { rec.start(); } catch (e) { 
       setPhase("idle");
       startWakeWord(); 
     }
@@ -168,12 +187,11 @@ export default function VoiceAssistant() {
     if (phase !== "idle") return;
     if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) return;
     
-    // Clean up old instance
     if (wakeRef.current) { try { wakeRef.current.abort(); } catch {} }
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const wake = new SR();
-    wake.lang = "en-IN";
+    wake.lang = currentLocale;
     wake.continuous = true;
     wake.interimResults = true;
 
@@ -184,9 +202,9 @@ export default function VoiceAssistant() {
       }
       
       const triggers = [
-        "hey sevasetu", "sevasetu", "seva setu", "hey seva", "सेवासेतु", "नमस्ते", 
+        "hey sevasetu", "sevasetu", "seva setu", "hey seva", "सेवासेतु", "नमस्ते", "నమస్తే",
         "hello sevasetu", "ok sevasetu", "hi sevasetu", "wake up", "setu",
-        "hey setu", "hey satu", "hey sattu", "hi setu", "hi satu"
+        "hey setu", "hi setu", "సెతు", "सेतु"
       ];
       if (triggers.some(t => heard.includes(t))) {
         try { wake.abort(); } catch {} 
@@ -194,13 +212,13 @@ export default function VoiceAssistant() {
         setTranscript("");
         transcriptRef.current = "";
         setResponse("");
-        playBeep(660, "sine", 0.1); // Wake up beep
+        playBeep(660, "sine", 0.1);
         
-        // Zero-latency: start listening IMMEDIATELY
-        startCommandListen();
-        
-        // Parallel greeting (don't block listening)
-        speak("Yes? I am listening.");
+        const welcome = translate("Namaste! I am SETU. How can I help you?");
+        setResponse(welcome);
+        speak(welcome, () => {
+          startCommandListen();
+        });
       }
     };
 
@@ -221,7 +239,6 @@ export default function VoiceAssistant() {
 
     wakeRef.current = wake;
     try { wake.start(); } catch (e) {
-      console.error("Wake start failed", e);
       setTimeout(() => startWakeWord(), 2000);
     }
   };
@@ -234,7 +251,7 @@ export default function VoiceAssistant() {
       if (recRef.current) try { recRef.current.abort(); } catch {}
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     };
-  }, []);
+  }, [language]);
 
   const manualActivate = () => {
     if (wakeRef.current) try { wakeRef.current.abort(); } catch {}
@@ -243,7 +260,9 @@ export default function VoiceAssistant() {
     transcriptRef.current = "";
     setResponse("");
     playBeep(660, "sine", 0.1);
-    speak("Yes, I am listening. Please tell me your command.", () => {
+    const prompt = translate("Yes, I am listening. Please tell me your command.");
+    setResponse(prompt);
+    speak(prompt, () => {
       startCommandListen();
     });
   };
@@ -259,7 +278,6 @@ export default function VoiceAssistant() {
 
   return (
     <>
-      {/* Floating Button */}
       <button
         onClick={manualActivate}
         className={`fixed bottom-8 right-8 z-[9999] w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95
@@ -274,19 +292,16 @@ export default function VoiceAssistant() {
         <span className="text-[7px] font-black text-white tracking-widest uppercase">Setu</span>
       </button>
 
-      {/* Wake Hint */}
       {phase === "idle" && (
         <div className="fixed bottom-28 right-8 z-[9998] bg-black/80 backdrop-blur border border-white/10 rounded-full px-4 py-2 text-[10px] text-white/80 font-bold pointer-events-none shadow-xl animate-bounce">
-          Say <span className="text-saffron">&quot;Hey SevaSetu&quot;</span>
+          {translate("Say")} <span className="text-saffron">&quot;Hey SevaSetu&quot;</span>
         </div>
       )}
 
-      {/* Full Overlay */}
       {phase !== "idle" && (
         <div className="fixed inset-0 z-[9990] flex flex-col items-center justify-center bg-[#050505]/95 backdrop-blur-2xl transition-all duration-500">
           <button onClick={closeAssistant} className="absolute top-8 right-8 text-white/30 hover:text-white text-3xl">✕</button>
 
-          {/* Visual Orb */}
           <div className="relative w-48 h-48 mb-12">
             <div className={`absolute inset-0 rounded-full blur-3xl opacity-30 animate-pulse
               ${phase === "listening" ? "bg-red-500" : "bg-saffron"}`} />
@@ -307,16 +322,16 @@ export default function VoiceAssistant() {
           </div>
 
           <h3 className="text-white text-4xl font-display font-bold mb-4 tracking-tight">
-            {phase === "listening" ? "I'm Listening..." : phase === "responding" ? "One Moment..." : phase === "error" ? "Something went wrong" : "SevaSetu AI"}
+            {phase === "listening" ? translate("Listening...") : phase === "responding" ? translate("One Moment...") : phase === "error" ? translate("Something went wrong") : "SevaSetu AI"}
           </h3>
           
           <p className="text-saffron text-lg font-medium mb-8 max-w-md text-center px-6">
-            {phase === "listening" ? "What government service do you need?" : phase === "error" ? errorMessage : response || "How can I assist you today?"}
+            {phase === "listening" ? translate("What government service do you need?") : phase === "error" ? errorMessage : response || translate("How can I assist you today?")}
           </p>
 
           {transcript && (
             <div className="bg-white/5 border border-white/10 rounded-2xl px-8 py-4 max-w-2xl text-center shadow-xl mb-8">
-              <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-2">Transcript</p>
+              <p className="text-white/60 text-xs uppercase tracking-widest font-bold mb-2">{translate("Transcript")}</p>
               <p className="text-white text-2xl font-medium italic">&quot;{transcript}&quot;</p>
             </div>
           )}
@@ -335,7 +350,7 @@ export default function VoiceAssistant() {
                   onClick={() => handleCommand(cmd.label)}
                   className="bg-white/5 border border-white/10 hover:border-saffron/50 hover:bg-saffron/10 p-4 rounded-2xl flex flex-col items-center gap-2 transition-all">
                   <span className="text-2xl">{cmd.icon}</span>
-                  <span className="text-white/80 text-xs font-bold uppercase">{cmd.label}</span>
+                  <span className="text-white/80 text-xs font-bold uppercase">{translate(cmd.label)}</span>
                 </button>
               ))}
             </div>
@@ -344,7 +359,7 @@ export default function VoiceAssistant() {
           {phase === "error" && (
             <button onClick={() => { setPhase("idle"); setTimeout(() => startWakeWord(), 500); }}
               className="mt-8 px-10 py-4 bg-saffron text-white rounded-full font-bold shadow-xl hover:scale-105 transition-transform">
-              Try Again
+              {translate("Try Again")}
             </button>
           )}
         </div>

@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from services import auth_service
-from services.db_service import get_pool
-from pydantic import BaseModel, constr
+from fastapi import APIRouter, HTTPException, Depends, status # type: ignore
+from fastapi.security import OAuth2PasswordBearer # type: ignore
+from jose import JWTError, jwt # type: ignore
+from services import auth_service # type: ignore
+from services.db_service import get_pool # type: ignore
+from pydantic import BaseModel, constr, Field # type: ignore
 from typing import Optional
 import random
 
@@ -12,12 +12,12 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/verify-otp")
 
 class PhoneRequest(BaseModel):
-    phone: constr(min_length=10, max_length=10)
+    phone: str = Field(..., min_length=10, max_length=10)
     name: Optional[str] = None # Name is required only for first time
     aadhaar_number: Optional[str] = None
 
 class OTPVerifyRequest(BaseModel):
-    phone: constr(min_length=10, max_length=10)
+    phone: str = Field(..., min_length=10, max_length=10)
     otp: str
 
 class Token(BaseModel):
@@ -120,7 +120,8 @@ async def verify_otp(request: OTPVerifyRequest):
         user = await conn.fetchrow("SELECT id, phone FROM citizens WHERE phone = $1", request.phone)
         
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            # This should theoretically not happen if they are verified, but good for safety
+            raise HTTPException(status_code=404, detail="User found in OTP store but not in database. Please register.")
         
         # OTP is verified, create the real access token
         access_token = auth_service.create_access_token(data={"sub": user["phone"], "id": str(user["id"])})

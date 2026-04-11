@@ -5,21 +5,26 @@ import os
 import json
 import re
 from typing import Optional
-import httpx
-from dotenv import load_dotenv
+import httpx # type: ignore
+from dotenv import load_dotenv # type: ignore
+from services import db_service # type: ignore
 
 load_dotenv()
 
 ANTIGRAVITY_API_KEY = os.getenv("ANTIGRAVITY_API_KEY", "")
 ANTIGRAVITY_API_BASE = "https://api.antigravity.ai/v1"
 
-SYSTEM_PROMPT = """You are Savasetu AI — a helpful Indian government services assistant.
-Your mission: Help citizens discover government schemes, check eligibility, apply for benefits, and resolve grievances.
-Always respond in the citizen's preferred language (Hindi, Telugu, Kannada, Marathi, Tamil, or English).
-When listing schemes, respond in structured JSON format inside a <schemes> XML tag.
-When classifying grievances, respond in structured JSON inside a <classification> XML tag.
-Be warm, simple, encouraging, and use respectful Indian greetings (Namaste, Vanakkam, etc.).
-Keep responses concise and practical. Prioritize actionable guidance."""
+SYSTEM_PROMPT = """You are Savasetu AI — a professional and empathetic assistant for Indian Government services.
+Your mission: Help citizens discover relevant government schemes, check eligibility, apply for benefits, and resolve grievances.
+
+CONTEXT GUIDELINES:
+1. When a user asks about schemes, I will provide you with a list of "Candidate Schemes" from the database. 
+2. Use these candidates to formulate your answer. If no candidates are provided, suggest general categories (Health, Agriculture, Housing, etc.) and ask for details.
+3. Always respond in the citizen's preferred language (Hindi, Telugu, Kannada, Marathi, Tamil, or English).
+4. For schemes, respond with a helpful explanation AND include structured JSON inside a <schemes> XML tag.
+5. Example schemes tag: <schemes>[{"name": "...", "benefit": "...", "apply_url": "..."}]</schemes>
+6. Be warm and use respectful Indian greetings (Namaste, Vanakkam, etc.).
+7. Keep responses concise and practical. Prioritize actionable guidance (e.g., specific documents needed)."""
 
 
 async def _call_antigravity(messages: list[dict], max_tokens: int = 1000) -> str:
@@ -54,6 +59,8 @@ async def _call_antigravity(messages: list[dict], max_tokens: int = 1000) -> str
     except Exception as e:
         print(f"Antigravity API error: {e}")
         return _mock_response(messages[-1]["content"] if messages else "")
+    
+    return "" # Final fallback to satisfy linter
 
 
 def _mock_response(message: str) -> str:
@@ -83,6 +90,34 @@ def _extract_tag(text: str, tag: str) -> Optional[str]:
     return match.group(1).strip() if match else None
 
 
+async def _search_schemes_local(message: str) -> list[dict]:
+    """Basic keyword-based scheme search in the database."""
+    keywords = re.findall(r'\w+', message.lower())
+    stop_words = {'scheme', 'yojana', 'available', 'government', 'help', 'find', 'me', 'want', 'apply'}
+    search_terms = [k for k in keywords if len(k) > 3 and k not in stop_words]
+    
+    if not search_terms:
+        return []
+
+    candidate_schemes = []
+    try:
+        all_schemes = await db_service.get_all_schemes()
+        for s in all_schemes:
+            text = f"{s['name']} {s['category']} {s['description']}".lower()
+            if any(term in text for term in search_terms):
+                candidate_schemes.append({
+                    "name": s["name"],
+                    "benefit": s["benefit_amount"],
+                    "category": s["category"],
+                    "apply_url": s["apply_url"],
+                    "description": s.get("description", "")
+                })
+    except Exception as e:
+        print(f"Error in local search: {e}")
+    
+    return candidate_schemes
+
+
 async def get_ai_response(
     message: str,
     language: str = "en",
@@ -92,18 +127,21 @@ async def get_ai_response(
     """
     Main chat AI function. Returns reply, suggested_schemes, action_buttons.
     """
+    # 1. Search Database for relevant schemes
+    candidates = await _search_schemes_local(message)
+    
+    # 2. Build Context
     profile_context = ""
     if citizen_profile:
-        profile_context = f"""
-Citizen Profile:
-- Name: {citizen_profile.get('name', 'Citizen')}
-- State: {citizen_profile.get('state', 'Unknown')}
-- Age: {citizen_profile.get('age', 'Unknown')}
-- Occupation: {citizen_profile.get('occupation', 'Unknown')}
-- Annual Income: ₹{citizen_profile.get('annual_income', 'Unknown')}
-- Caste Category: {citizen_profile.get('caste_category', 'General')}
-- Family Size: {citizen_profile.get('family_size', 'Unknown')}
-"""
+        profile_context = f"\nCitizen Profile: {json.dumps(citizen_profile, indent=2, default=str)}\n"
+
+    schemes_context = ""
+    if candidates:
+        top_candidates = []
+        for i, c in enumerate(candidates):
+            if i >= 5: break
+            top_candidates.append(c)
+        schemes_context = f"\nRelevant schemes found in database:\n{json.dumps(top_candidates, indent=2)}\n"
 
     lang_map = {
         "hi": "Hindi", "te": "Telugu", "kn": "Kannada",
@@ -111,19 +149,18 @@ Citizen Profile:
     }
     lang_name = lang_map.get(language, "English")
 
-    system = f"{SYSTEM_PROMPT}\n\nRespond in {lang_name}.\n{profile_context}"
+    system = f"{SYSTEM_PROMPT}\n\nRespond in {lang_name}.\n{profile_context}{schemes_context}"
     messages = [{"role": "system", "content": system}]
 
-    # Add conversation history
     if history:
-        for h in history[-6:]:  # Last 6 turns
+        for h in history[-6:]:
             messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
 
     messages.append({"role": "user", "content": message})
 
     raw_reply = await _call_antigravity(messages, max_tokens=1000)
 
-    # Extract schemes if present
+    # 3. Post-process
     suggested_schemes = []
     schemes_json = _extract_tag(raw_reply, "schemes")
     if schemes_json:
@@ -131,19 +168,21 @@ Citizen Profile:
             suggested_schemes = json.loads(schemes_json)
         except json.JSONDecodeError:
             pass
+    
+    # Fallback to local candidates if LLM didn't return structured JSON
+    if not suggested_schemes and candidates and ("scheme" in message.lower() or "benefit" in message.lower()):
+        fallback_schemes = []
+        for i, c in enumerate(candidates):
+            if i >= 3: break
+            fallback_schemes.append(c)
+        suggested_schemes = fallback_schemes
 
-    # Clean reply — remove XML tags for display
     clean_reply = re.sub(r"<schemes>.*?</schemes>", "", raw_reply, flags=re.DOTALL).strip()
 
-    # Suggest action buttons based on content
-    action_buttons = []
-    msg_lower = message.lower()
-    if "scheme" in msg_lower or len(suggested_schemes) > 0:
-        action_buttons = ["Apply Now", "Check Eligibility", "Learn More"]
-    elif "grievance" in msg_lower or "complaint" in msg_lower:
-        action_buttons = ["File Grievance", "Track Complaint"]
-    else:
-        action_buttons = ["Find Schemes", "Check Eligibility", "File Grievance"]
+    # Suggest action buttons
+    action_buttons = ["Find Schemes", "Check Eligibility", "File Grievance"]
+    if suggested_schemes:
+        action_buttons = ["Apply Now", "Learn More", "Grievance Help"]
 
     return {
         "reply": clean_reply or raw_reply,
@@ -155,24 +194,40 @@ Citizen Profile:
 
 async def check_eligibility_ai(profile: dict) -> list[dict]:
     """
-    Deep AI eligibility check: Returns top 5 eligible schemes as JSON.
+    Deep AI eligibility check: Returns top 5 eligible schemes using DB data and LLM reasoning.
     """
-    prompt = f"""Based on this citizen's profile, return a JSON array of the top 5 most relevant 
-Indian government schemes they qualify for. 
+    # 1. Get all schemes from DB
+    try:
+        schemes = await db_service.get_all_schemes()
+    except Exception:
+        schemes = []
 
+    # 2. Build prompt with schemes
+    schemes_data = []
+    top_schemes_list = []
+    for i, s in enumerate(schemes):
+        if i >= 15: break
+        top_schemes_list.append(s)
+        
+    for s in top_schemes_list:
+        schemes_data.append({
+            "name": s["name"],
+            "category": s["category"],
+            "description": s["description"],
+            "criteria": s.get("eligibility_criteria", {})
+        })
+
+    prompt = f"""Match this citizen's profile to the best 5 government schemes from the provided list.
+    
 Profile:
-- Age: {profile.get('age')}
-- Gender: {profile.get('gender')}
-- State: {profile.get('state')}
-- Occupation: {profile.get('occupation')}
-- Annual Income: ₹{profile.get('annual_income')}
-- Caste Category: {profile.get('caste_category', 'General')}
-- Land Ownership: {profile.get('land_ownership', False)}
-- Family Size: {profile.get('family_size')}
+{json.dumps(profile, indent=2)}
 
-Return ONLY a JSON array (no markdown) with this structure:
-[{{"name": "Scheme Name", "ministry": "Ministry Name", "benefit": "Benefit Description", 
-   "match_score": 85, "apply_url": "https://...", "eligibility_reason": "Why they qualify", "category": "Category"}}]"""
+Schemes List:
+{json.dumps(schemes_data, indent=2)}
+
+Analyze the criteria (income, age, occupation, state, gender) and find the best matches.
+Return ONLY a JSON array of the top 5 matches:
+[{{"name": "...", "ministry": "...", "benefit": "...", "match_score": 95, "apply_url": "...", "eligibility_reason": "..."}}]"""
 
     messages = [
         {"role": "system", "content": "You are a government scheme eligibility expert. Return only valid JSON arrays."},
@@ -181,35 +236,35 @@ Return ONLY a JSON array (no markdown) with this structure:
 
     raw = await _call_antigravity(messages, max_tokens=1500)
 
-    # Try to parse JSON
     try:
-        # Find JSON array in response
         json_match = re.search(r"\[.*\]", raw, re.DOTALL)
         if json_match:
             return json.loads(json_match.group())
     except json.JSONDecodeError:
         pass
 
-    # Fallback static response
-    return [
+    # Fallback to local filtering if AI fails or no key
+    matches = []
+    occ = profile.get("occupation", "").lower()
+    for s in schemes:
+        if occ in s["description"].lower() or occ in s["category"].lower():
+            matches.append({
+                "name": s["name"],
+                "benefit": s["benefit_amount"],
+                "match_score": 85,
+                "apply_url": s["apply_url"],
+                "eligibility_reason": f"Matches your occupation as a {occ}."
+            })
+            if len(matches) >= 5: break
+            
+    return matches or [
         {
             "name": "Ayushman Bharat PM-JAY",
-            "ministry": "Ministry of Health",
             "benefit": "₹5,00,000 health cover/year",
-            "match_score": 88,
+            "match_score": 70,
             "apply_url": "https://pmjay.gov.in",
-            "eligibility_reason": "Based on your income and family size, you qualify for free health insurance.",
-            "category": "Health",
-        },
-        {
-            "name": "PM Kisan Samman Nidhi",
-            "ministry": "Ministry of Agriculture",
-            "benefit": "₹6,000/year",
-            "match_score": 82,
-            "apply_url": "https://pmkisan.gov.in",
-            "eligibility_reason": "If you own agricultural land, you qualify for direct income support.",
-            "category": "Agriculture",
-        },
+            "eligibility_reason": "General health coverage for low-income families."
+        }
     ]
 
 
@@ -218,12 +273,12 @@ async def classify_grievance(description: str, category: str) -> dict:
     AI classification of grievance to correct government department.
     """
     prompt = f"""Classify this government grievance to the correct Indian government department.
-
+    
 Category: {category}
 Description: {description}
 
-Return ONLY a JSON object (no markdown):
-{{"department": "Department Name", "sub_department": "Sub-department", "priority": "normal|high|urgent", "estimated_days": 15}}"""
+Return ONLY a JSON object:
+{{"department": "...", "sub_department": "...", "priority": "normal|high|urgent", "estimated_days": 15}}"""
 
     messages = [
         {"role": "system", "content": "You are an expert in Indian government administration. Return only valid JSON."},
@@ -242,22 +297,7 @@ Return ONLY a JSON object (no markdown):
                 "priority": result.get("priority", "normal"),
                 "estimated_days": result.get("estimated_days", 30),
             }
-    except json.JSONDecodeError:
+    except Exception:
         pass
 
-    # Category-based fallback
-    dept_map = {
-        "Ration Card": ("Department of Food and Civil Supplies", "normal", 21),
-        "Pension": ("Social Welfare Department", "normal", 30),
-        "MNREGA": ("Department of Rural Development", "normal", 15),
-        "Housing": ("Department of Housing and Urban Affairs", "normal", 45),
-        "Healthcare": ("Department of Health and Family Welfare", "high", 10),
-        "Other": ("General Administration", "normal", 30),
-    }
-    dept_info = dept_map.get(category, dept_map["Other"])
-    return {
-        "department": dept_info[0],
-        "sub_department": None,
-        "priority": dept_info[1],
-        "estimated_days": dept_info[2],
-    }
+    return {"department": "General Administration", "sub_department": None, "priority": "normal", "estimated_days": 30}

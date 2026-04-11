@@ -69,17 +69,20 @@ export default function DashboardPage() {
             const cleanup = () => clearInterval(interval);
 
             // Stat widgets slide in
-            gsap.from(".stat-widget", {
-                y: -30, opacity: 0, stagger: 0.1, duration: 0.6, ease: "power3.out", delay: 0.3,
-            });
+            gsap.fromTo(".stat-widget", 
+                { y: -30, opacity: 0 },
+                { y: 0, opacity: 1, stagger: 0.1, duration: 0.6, ease: "power3.out", delay: 0.3 }
+            );
             // Timeline items slide in
-            gsap.from(".timeline-item", {
-                x: -30, opacity: 0, stagger: 0.1, duration: 0.5, ease: "power2.out", delay: 0.6,
-            });
+            gsap.fromTo(".timeline-item", 
+                { x: -30, opacity: 0 },
+                { x: 0, opacity: 1, stagger: 0.1, duration: 0.5, ease: "power2.out", delay: 0.6 }
+            );
             // Notifications slide from right
-            gsap.from(".notif-item", {
-                x: 30, opacity: 0, stagger: 0.1, duration: 0.5, ease: "power2.out", delay: 0.8,
-            });
+            gsap.fromTo(".notif-item", 
+                { x: 30, opacity: 0 },
+                { x: 0, opacity: 1, stagger: 0.1, duration: 0.5, ease: "power2.out", delay: 0.8 }
+            );
             // Pulsing dot for "under review"
             gsap.to(".status-pulse", {
                 scale: 1.4, opacity: 0.5, duration: 0.8, ease: "power2.out", yoyo: true, repeat: -1,

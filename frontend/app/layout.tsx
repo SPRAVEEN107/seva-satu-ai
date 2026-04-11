@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/LanguageContext";
-import AiVoiceAssistant from "@/lib/AiVoiceAssistant";
 import VoiceAssistant from "@/components/VoiceAssistant";
 import AccessibilityToolbar from "@/components/AccessibilityToolbar";
 
@@ -35,7 +34,6 @@ export default function RootLayout({
             <body className="bg-dark-bg text-text-primary font-body antialiased">
                 <LanguageProvider>
                     {children}
-                    <AiVoiceAssistant />
                     <VoiceAssistant />
                     <AccessibilityToolbar />
                 </LanguageProvider>
